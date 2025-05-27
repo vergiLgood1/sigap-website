@@ -115,3 +115,85 @@ export interface IIncidentLogs {
   source: string;
   isVeryRecent?: boolean;
 }
+
+export interface ICrime {
+  id: string;
+  district_id: string;
+  created_at: string;
+  level: 'low' | 'medium' | 'high' | 'critical';
+  method: string;
+  month: number;
+  number_of_crime: number;
+  score: number;
+  updated_at: string;
+  year: number;
+  source_type: string;
+  crime_cleared: number;
+  avg_crime: number;
+  districts?: {
+    name: string;
+  };
+}
+
+export interface ICrimeIncident {
+  id: string;
+  crime_id: string;
+  crime_category_id: string;
+  location_id: string;
+  description: string;
+  victim_count: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  timestamp: string;
+  crime_categories?: {
+    name: string;
+    type: string;
+  };
+  locations?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+    districts: {
+      name: string;
+    };
+  };
+  crimes?: {
+    id: string;
+    district_id: string;
+  };
+}
+
+export interface IIncidentLog {
+  id: string;
+  user_id: string;
+  location_id: string;
+  category_id: string;
+  description: string;
+  source: string;
+  time: string;
+  verified: boolean;
+  created_at: string;
+  updated_at: string;
+  crime_categories?: {
+    name: string;
+    type: string;
+  };
+  locations?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+    districts: {
+      name: string;
+    };
+  };
+  user?: {
+    email: string;
+    phone: string;
+    profile: {
+      first_name: string;
+      last_name: string;
+      avatar: string;
+    };
+  };
+}

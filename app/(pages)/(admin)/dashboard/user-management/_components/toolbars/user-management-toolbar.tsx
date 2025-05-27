@@ -3,9 +3,10 @@
 import React from "react";
 import { SearchInput } from "./search-input";
 import { UserActionsMenu } from "./action";
-import { FilterButton } from "./filter-button";
+
 import { calculateUserStats } from "@/app/_utils/common";
 import { useGetUsersQuery } from "../../_queries/queries";
+import { UserFilterButton } from "./filter-button";
 
 
 interface UserManagementToolbarProps {
@@ -38,7 +39,7 @@ export const UserManagementToolbar: React.FC<UserManagementToolbarProps> = ({
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
                 />
-                <FilterButton
+                <UserFilterButton
                     activeFilterCount={activeFilterCount}
                     clearFilters={clearFilters}
                 />
