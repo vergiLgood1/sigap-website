@@ -1,0 +1,1 @@
+INSERT INTO "public"."profiles" ("id", "user_id", "avatar", "username", "first_name", "last_name", "bio", "address", "birth_date") VALUES ('0b9f8a85-030f-45f3-ae96-4840de13f4fc', '37cd4c49-28ad-4049-83c0-a0794d67eb18', null, 'adminsigap', 'Admin', 'Sigap', null, null, null);

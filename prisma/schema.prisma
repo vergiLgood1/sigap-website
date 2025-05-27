@@ -1,0 +1,515 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgcrypto, postgis, uuid_ossp(map: "uuid-ossp", schema: "extensions")]
+}
+
+model profiles {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String    @unique @db.Uuid
+  avatar      String?   @db.VarChar(355)
+  username    String?   @unique @db.VarChar(255)
+  first_name  String?   @db.VarChar(255)
+  last_name   String?   @db.VarChar(255)
+  bio         String?   @db.VarChar
+  address     Json?     @db.Json
+  birth_date  DateTime?
+  nik         String?   @db.VarChar(100)
+  birth_place String?
+  users       users     @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([username])
+}
+
+model users {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roles_id           String              @db.Uuid
+  email              String              @unique @db.VarChar(255)
+  phone              String?             @unique @db.VarChar(20)
+  encrypted_password String?             @db.VarChar(255)
+  invited_at         DateTime?           @db.Timestamptz(6)
+  confirmed_at       DateTime?           @db.Timestamptz(6)
+  email_confirmed_at DateTime?           @db.Timestamptz(6)
+  recovery_sent_at   DateTime?           @db.Timestamptz(6)
+  last_sign_in_at    DateTime?           @db.Timestamptz(6)
+  app_metadata       Json?
+  user_metadata      Json?
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @db.Timestamptz(6)
+  banned_until       DateTime?           @db.Timestamptz(6)
+  is_anonymous       Boolean             @default(false)
+  banned_reason      String?             @db.VarChar(255)
+  is_banned          Boolean             @default(false)
+  panic_strike       Int                 @default(0)
+  spoofing_attempts  Int                 @default(0)
+  events             events[]
+  incident_logs      incident_logs[]
+  location_logs      location_logs[]
+  panic_button_logs  panic_button_logs[]
+  profile            profiles?
+  sessions           sessions[]
+  role               roles               @relation(fields: [roles_id], references: [id])
+
+  @@index([is_anonymous])
+  @@index([created_at])
+  @@index([updated_at])
+}
+
+model roles {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String        @unique @db.VarChar(255)
+  description String?
+  created_at  DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime      @default(now()) @db.Timestamptz(6)
+  officers    officers[]
+  permissions permissions[]
+  users       users[]
+}
+
+model sessions {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String         @db.Uuid
+  event_id   String         @db.Uuid
+  status     session_status @default(active)
+  created_at DateTime       @default(now()) @db.Timestamptz(6)
+  event      events         @relation(fields: [event_id], references: [id])
+  user       users          @relation(fields: [user_id], references: [id])
+
+  @@index([user_id], map: "idx_sessions_user_id")
+  @@index([event_id], map: "idx_sessions_event_id")
+  @@index([status], map: "idx_sessions_status")
+}
+
+model events {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String      @db.VarChar(255)
+  description String?     @db.VarChar(255)
+  code        String      @unique @default(nanoid(10))
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+  user_id     String      @db.Uuid
+  users       users       @relation(fields: [user_id], references: [id])
+  locations   locations[]
+  sessions    sessions[]
+
+  @@index([name], map: "idx_events_name")
+  @@index([code], map: "idx_events_code")
+  @@index([id], map: "idx_events_id")
+}
+
+model resources {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String        @unique @db.VarChar(255)
+  type          String?
+  description   String?
+  instance_role String?
+  relations     String?
+  attributes    Json?
+  created_at    DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime      @default(now()) @db.Timestamptz(6)
+  permissions   permissions[]
+}
+
+model permissions {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  action      String
+  resource_id String    @db.Uuid
+  role_id     String    @db.Uuid
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+  resource    resources @relation(fields: [resource_id], references: [id])
+  role        roles     @relation(fields: [role_id], references: [id])
+}
+
+model cities {
+  id         String      @id @db.VarChar(20)
+  name       String      @db.VarChar(100)
+  created_at DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at DateTime?   @default(now()) @db.Timestamptz(6)
+  districts  districts[]
+  units      units[]
+
+  @@index([name], map: "idx_cities_name")
+}
+
+model crime_incidents {
+  id                String           @id @db.VarChar(20)
+  crime_id          String           @db.VarChar(20)
+  crime_category_id String           @db.VarChar(20)
+  location_id       String           @db.Uuid
+  description       String
+  victim_count      Int
+  status            crime_status?    @default(open)
+  created_at        DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?        @default(now()) @db.Timestamptz(6)
+  timestamp         DateTime         @db.Timestamptz(6)
+  crime_categories  crime_categories @relation(fields: [crime_category_id], references: [id], onUpdate: NoAction)
+  crimes            crimes           @relation(fields: [crime_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  locations         locations        @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([crime_category_id], map: "idx_crime_incidents_crime_category_id")
+  @@index([timestamp], map: "idx_crime_incidents_date")
+  @@index([location_id], map: "idx_crime_incidents_location_id")
+  @@index([crime_id], map: "idx_crime_incidents_crime_id")
+  @@index([status], map: "idx_crime_incidents_status")
+}
+
+model crime_categories {
+  id              String            @id @db.VarChar(20)
+  name            String            @db.VarChar(255)
+  description     String
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  type            String?           @db.VarChar(100)
+  crime_incidents crime_incidents[]
+  incident_logs   incident_logs[]
+
+  @@index([name], map: "idx_crime_categories_name")
+}
+
+model crimes {
+  id              String            @id @db.VarChar(20)
+  district_id     String            @db.VarChar(20)
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  level           crime_rates       @default(low)
+  method          String?           @db.VarChar(100)
+  month           Int?
+  number_of_crime Int               @default(0)
+  score           Float             @default(0)
+  updated_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  year            Int?
+  source_type     String?           @db.VarChar(100)
+  crime_cleared   Int               @default(0)
+  avg_crime       Float             @default(0)
+  crime_incidents crime_incidents[]
+  districts       districts         @relation(fields: [district_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([district_id, year, month], map: "idx_crimes_district_id_year_month")
+  @@index([month, year], map: "idx_crimes_month_year")
+  @@index([month], map: "idx_crimes_month")
+  @@index([year], map: "idx_crimes_year")
+  @@index([district_id, month], map: "idx_crimes_district_id_month")
+}
+
+model demographics {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  district_id          String    @db.VarChar(20)
+  population           Int
+  number_of_unemployed Int
+  population_density   Float
+  year                 Int
+  created_at           DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime? @default(now()) @db.Timestamptz(6)
+  districts            districts @relation(fields: [district_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([district_id, year])
+  @@index([year], map: "idx_demographics_year")
+}
+
+model districts {
+  id           String         @id @db.VarChar(20)
+  city_id      String         @db.VarChar(20)
+  name         String         @db.VarChar(100)
+  created_at   DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?      @default(now()) @db.Timestamptz(6)
+  crimes       crimes[]
+  demographics demographics[]
+  cities       cities         @relation(fields: [city_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  geographics  geographics[]
+  locations    locations[]
+  units        units?
+
+  @@index([city_id], map: "idx_districts_city_id")
+  @@index([name], map: "idx_districts_name")
+}
+
+model locations {
+  id               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  district_id      String                   @db.VarChar(20)
+  event_id         String                   @db.Uuid
+  address          String?                  @db.VarChar(255)
+  type             String?                  @db.VarChar(100)
+  latitude         Float
+  longitude        Float
+  land_area        Float?
+  polygon          Unsupported("geometry")?
+  geometry         Unsupported("geometry")?
+  created_at       DateTime?                @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?                @default(now()) @db.Timestamptz(6)
+  location         Unsupported("geography")
+  distance_to_unit Float?
+  crime_incidents  crime_incidents[]
+  incident_logs    incident_logs[]
+  districts        districts                @relation(fields: [district_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  event            events                   @relation(fields: [event_id], references: [id])
+  patrol_units     patrol_units[]
+
+  @@index([district_id], map: "idx_locations_district_id")
+  @@index([type], map: "idx_locations_type")
+  @@index([location], map: "idx_locations_geography", type: Gist)
+  @@index([location], map: "idx_locations_location_gist", type: Gist)
+}
+
+model incident_logs {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String              @db.Uuid
+  location_id       String              @db.Uuid
+  category_id       String              @db.VarChar(20)
+  description       String?
+  source            String?             @default("manual")
+  time              DateTime            @db.Timestamptz(6)
+  verified          Boolean?            @default(false)
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  evidence          evidence[]
+  crime_categories  crime_categories    @relation(fields: [category_id], references: [id], map: "fk_incident_category")
+  locations         locations           @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user              users               @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  panic_button_logs panic_button_logs[]
+
+  @@index([category_id], map: "idx_incident_logs_category_id")
+  @@index([time], map: "idx_incident_logs_time")
+}
+
+model evidence {
+  incident_id String        @db.Uuid
+  type        String        @db.VarChar(50)
+  url         String
+  uploaded_at DateTime?     @default(now()) @db.Timestamptz(6)
+  caption     String?       @db.VarChar(255)
+  description String?       @db.VarChar(255)
+  metadata    Json?
+  id          String        @id @unique @db.VarChar(20)
+  incident    incident_logs @relation(fields: [incident_id], references: [id], onDelete: Cascade)
+
+  @@index([incident_id], map: "idx_evidence_incident_id")
+}
+
+model units {
+  code_unit       String                   @id @unique @db.VarChar(20)
+  district_id     String?                  @unique @db.VarChar(20)
+  name            String                   @db.VarChar(100)
+  description     String?
+  type            unit_type
+  created_at      DateTime?                @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?                @default(now()) @db.Timestamptz(6)
+  address         String?
+  land_area       Float?
+  latitude        Float
+  longitude       Float
+  location        Unsupported("geography")
+  city_id         String                   @db.VarChar(20)
+  phone           String?                  @db.VarChar(20)
+  officers        officers[]
+  patrol_units    patrol_units[]
+  unit_statistics unit_statistics[]
+  cities          cities                   @relation(fields: [city_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  districts       districts?               @relation(fields: [district_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([name], map: "idx_units_name")
+  @@index([type], map: "idx_units_type")
+  @@index([code_unit], map: "idx_units_code_unit")
+  @@index([district_id], map: "idx_units_district_id")
+  @@index([location], map: "idx_unit_location", type: Gist)
+  @@index([district_id, location], map: "idx_units_location_district")
+  @@index([location], map: "idx_units_location_gist", type: Gist)
+}
+
+model patrol_units {
+  unit_id      String                @db.VarChar(20)
+  location_id  String                @db.Uuid
+  name         String                @db.VarChar(100)
+  type         String                @db.VarChar(50)
+  status       String                @db.VarChar(50)
+  radius       Float
+  created_at   DateTime              @default(now()) @db.Timestamptz(6)
+  id           String                @id @unique @db.VarChar(100)
+  category     patrol_unit_category? @default(group)
+  member_count Int?                  @default(0)
+  members      officers[]
+  location     locations             @relation(fields: [location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  unit         units                 @relation(fields: [unit_id], references: [code_unit], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([unit_id], map: "idx_patrol_units_unit_id")
+  @@index([location_id], map: "idx_patrol_units_location_id")
+  @@index([name], map: "idx_patrol_units_name")
+  @@index([type], map: "idx_patrol_units_type")
+  @@index([status], map: "idx_patrol_units_status")
+}
+
+model officers {
+  unit_id           String?             @db.VarChar(20)
+  role_id           String              @db.Uuid
+  nrp               String?             @unique @db.VarChar(100)
+  name              String              @db.VarChar(100)
+  rank              String?             @db.VarChar(100)
+  position          String?             @db.VarChar(100)
+  phone             String?             @db.VarChar(20)
+  email             String?             @db.VarChar(255)
+  avatar            String?
+  valid_until       DateTime?
+  qr_code           String?
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  patrol_unit_id    String?             @db.VarChar(100)
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  banned_reason     String?             @db.VarChar(255)
+  banned_until      DateTime?
+  is_banned         Boolean             @default(false)
+  panic_strike      Int                 @default(0)
+  spoofing_attempts Int                 @default(0)
+  place_of_birth    String?
+  date_of_birth     DateTime?           @db.Timestamptz(6)
+  patrol_units      patrol_units?       @relation(fields: [patrol_unit_id], references: [id], onDelete: Restrict)
+  roles             roles               @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  units             units?              @relation(fields: [unit_id], references: [code_unit], onDelete: Cascade, onUpdate: NoAction)
+  panic_button_logs panic_button_logs[]
+
+  @@index([unit_id], map: "idx_officers_unit_id")
+  @@index([nrp], map: "idx_officers_nrp")
+  @@index([name], map: "idx_officers_name")
+  @@index([rank], map: "idx_officers_rank")
+  @@index([position], map: "idx_officers_position")
+}
+
+model unit_statistics {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  crime_total   Int
+  crime_cleared Int
+  percentage    Float?
+  pending       Int?
+  month         Int
+  year          Int
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  code_unit     String    @db.VarChar(20)
+  units         units     @relation(fields: [code_unit], references: [code_unit], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([code_unit, month, year])
+  @@index([year, month], map: "idx_unit_statistics_year_month")
+}
+
+model geographics {
+  id          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  district_id String                   @db.VarChar(20)
+  address     String?
+  longitude   Float
+  latitude    Float
+  land_area   Float?
+  polygon     Unsupported("geometry")?
+  geometry    Unsupported("geometry")?
+  created_at  DateTime?                @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?                @default(now()) @db.Timestamptz(6)
+  description String?
+  type        String?                  @db.VarChar(100)
+  location    Unsupported("geography")
+  year        Int?
+  districts   districts                @relation(fields: [district_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([district_id], map: "idx_geographics_district_id")
+  @@index([type], map: "idx_geographics_type")
+  @@index([district_id, year], map: "idx_geographics_district_id_year")
+  @@index([location], map: "idx_geographics_location", type: Gist)
+}
+
+model contact_messages {
+  id                 String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String?                 @db.VarChar(255)
+  email              String?                 @db.VarChar(255)
+  phone              String?                 @db.VarChar(20)
+  message_type       String?                 @db.VarChar(50)
+  message_type_label String?                 @db.VarChar(50)
+  message            String?
+  status             status_contact_messages @default(new)
+  created_at         DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime                @db.Timestamptz(6)
+}
+
+model logs {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  action     String   @db.VarChar(100)
+  entity     String   @db.VarChar(100)
+  entity_id  String?  @db.VarChar(100)
+  changes    Json?
+  user_id    String?  @db.VarChar(100)
+  ip_address String?  @db.VarChar(100)
+  user_agent String?  @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([entity])
+  @@index([user_id])
+}
+
+model panic_button_logs {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String        @db.Uuid
+  officer_id  String?       @db.Uuid
+  incident_id String        @db.Uuid
+  timestamp   DateTime      @db.Timestamptz(6)
+  incidents   incident_logs @relation(fields: [incident_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  officers    officers?     @relation(fields: [officer_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_panic_buttons_user_id")
+}
+
+model location_logs {
+  id          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String                   @db.Uuid
+  latitude    Float
+  longitude   Float
+  location    Unsupported("geography")
+  timestamp   DateTime                 @db.Timestamptz(6)
+  description String?                  @db.VarChar(255)
+  created_at  DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime                 @default(now()) @db.Timestamptz(6)
+  users       users                    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([timestamp], map: "idx_location_logs_timestamp")
+  @@index([user_id], map: "idx_location_logs_user_id")
+}
+
+enum patrol_unit_category {
+  individual
+  group
+}
+
+enum session_status {
+  active
+  completed
+}
+
+enum status_contact_messages {
+  new
+  read
+  replied
+  closed
+}
+
+enum crime_rates {
+  low
+  medium
+  high
+  critical
+}
+
+enum crime_status {
+  open
+  closed
+  under_investigation
+  resolved
+  unresolved
+}
+
+enum unit_type {
+  polda
+  polsek
+  polres
+  other
+}

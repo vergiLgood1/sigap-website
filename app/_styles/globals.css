@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "./ews.css";
+@import "./ui.css";
+
+@import url(//fonts.googleapis.com/css?family=Roboto+Condensed:400,600,700);
+
+@layer base {
+  :root {
+    /* Latar belakang terang: putih bersih */
+    --background: 0 0% 100%; /* #ffffff */
+    --foreground: 0 0% 10%; /* #1a1a1a, teks hitam pekat */
+
+    /* Kartu: sama dengan latar belakang di mode terang */
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 0 0% 10%; /* #1a1a1a */
+
+    /* Popover: sama dengan latar belakang */
+    --popover: 0 0% 100%; /* #ffffff */
+    --popover-foreground: 0 0% 10%; /* #1a1a1a */
+
+    /* Warna utama: hijau Supabase #006239 */
+    --primary: 155 100% 19%; /* #006239 */
+    --primary-foreground: 0 0% 100%; /* #ffffff untuk kontras pada hijau */
+
+    /* Sekunder: abu-abu terang untuk elemen pendukung */
+    --secondary: 0 0% 96%; /* #f5f5f5 */
+    --secondary-foreground: 0 0% 10%; /* #1a1a1a */
+
+    /* Muted: abu-abu untuk teks pendukung */
+    --muted: 0 0% 85%; /* #d9d9d9 */
+    --muted-foreground: 0 0% 40%; /* #666666 */
+
+    /* Aksen: sama dengan sekunder */
+    --accent: 0 0% 96%; /* #f5f5f5 */
+    --accent-foreground: 0 0% 10%; /* #1a1a1a */
+
+    /* Destructive: merah untuk error */
+    --destructive: 0 85% 60%; /* #f44336 */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
+
+    /* Border dan input: abu-abu netral */
+    --border: 0 0% 80%; /* #cccccc */
+    --input: 0 0% 80%; /* #cccccc */
+
+    /* Ring: sama dengan primary untuk fokus */
+    --ring: 155 100% 19%; /* #006239 */
+
+    /* Radius: sudut membulat ringan */
+    --radius: 0.5rem;
+
+    /* Chart: gunakan hijau Supabase dan variasi */
+    --chart-1: 155 100% 19%; /* #006239 */
+    --chart-2: 160 60% 45%; /* sedikit lebih gelap */
+    --chart-3: 165 55% 40%;
+    --chart-4: 170 50% 35%;
+    --chart-5: 175 45% 30%;
+
+    /* Sidebar: mirip dengan kartu di mode terang */
+    --sidebar-background: 0 0% 98%; /* #fafafa */
+    --sidebar-foreground: 0 0% 10%; /* #1a1a1a */
+    --sidebar-primary: 155 100% 19%; /* #006239 */
+    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-accent: 0 0% 96%; /* #f5f5f5 */
+    --sidebar-accent-foreground: 0 0% 10%; /* #1a1a1a */
+    --sidebar-border: 0 0% 85%; /* #d9d9d9 */
+    --sidebar-ring: 155 100% 19%; /* #006239 */
+  }
+
+  .dark {
+    /* Latar belakang gelap: abu-abu tua mendekati hitam */
+    --background: 0 0% 10%; /* #1a1a1a */
+    --foreground: 0 0% 85%; /* #d9d9d9, teks abu-abu terang */
+
+    /* Kartu: sama dengan latar belakang di mode gelap */
+    --card: 0 0% 10%; /* #1a1a1a */
+    --card-foreground: 0 0% 85%; /* #d9d9d9 */
+
+    /* Popover: sama dengan latar belakang */
+    --popover: 0 0% 10%; /* #1a1a1a */
+    --popover-foreground: 0 0% 85%; /* #d9d9d9 */
+
+    /* Warna utama: hijau Supabase tetap digunakan */
+    --primary: 155 100% 19%; /* #006239 */
+    --primary-foreground: 0 0% 100%; /* #ffffff */
+
+    /* Sekunder: abu-abu gelap untuk elemen pendukung */
+    --secondary: 0 0% 15%; /* #262626 */
+    --secondary-foreground: 0 0% 85%; /* #d9d9d9 */
+    --secondary-tertiary: #242424; /* #242424 */
+
+    /* Third */
+    --tertiary: 0 0% 12%; /* #1F1F1F1 */
+    --tertiary-foreground: 0 0% 85%; /* #d9d9d9 */
+    --tertiary-border: 0 0% 20%; /* #333333 */
+
+    /* Muted: abu-abu gelap untuk teks pendukung */
+    --muted: 0 0% 20%; /* #333333 */
+    --muted-foreground: 0 0% 60%; /* #999999 */
+
+    /* Aksen: sama dengan sekunder */
+    --accent: 0 0% 15%; /* #262626 */
+    --accent-foreground: 0 0% 85%; /* #d9d9d9 */
+
+    /* Destructive: merah gelap untuk error */
+    --destructive: 0 62% 30%; /* #802626 */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
+
+    /* Border dan input: abu-abu gelap */
+    --border: 0 0% 20%; /* #333333 */
+    --input: 0 0% 20%; /* #333333 */
+
+    /* Ring: sama dengan primary */
+    --ring: 155 100% 19%; /* #006239 */
+
+    /* Chart: sama seperti mode terang */
+    --chart-1: 155 100% 19%; /* #006239 */
+    --chart-2: 160 60% 45%;
+    --chart-3: 165 55% 40%;
+    --chart-4: 170 50% 35%;
+    --chart-5: 175 45% 30%;
+
+    /* Sidebar: abu-abu gelap */
+    --sidebar-background: 0 0% 15%; /* #262626 */
+    --sidebar-foreground: 0 0% 85%; /* #d9d9d9 */
+    --sidebar-primary: 155 100% 19%; /* #006239 */
+    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-accent: 0 0% 20%; /* #333333 */
+    --sidebar-accent-foreground: 0 0% 85%; /* #d9d9d9 */
+    --sidebar-border: 0 0% 25%; /* #404040 */
+    --sidebar-ring: 155 100% 19%; /* #006239 */
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@font-face {
+  font-family: "DS-Digital";
+  src: url("/ds_digital/DIGITAL.TXT");
+}
+@font-face {
+  font-family: "DS-Digital";
+  src: url("/ds_digital/DS-DIGIB.TTF");
+  font-weight: bold;
+}
+@font-face {
+  font-family: "DS-Digital";
+  src: url("/ds_digital/DS-DIGII.TTF");
+  font-style: italic, oblique;
+}
+@font-face {
+  font-family: "DS-Digital";
+  src: url("/ds_digital/DS-DIGIT.TTF");
+  font-weight: bold;
+  font-style: italic, oblique;
+}

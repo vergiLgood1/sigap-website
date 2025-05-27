@@ -1,0 +1,1 @@
+INSERT INTO "public"."cities" ("id", "name", "created_at", "updated_at") VALUES ('3509', 'Jember', '2025-05-13 23:25:08.149+00', '2025-05-13 23:25:08.149+00');

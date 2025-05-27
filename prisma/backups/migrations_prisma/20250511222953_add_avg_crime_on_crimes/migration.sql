@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "crimes" ADD COLUMN     "avg_crime" DOUBLE PRECISION NOT NULL DEFAULT 0;

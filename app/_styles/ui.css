@@ -1,0 +1,1206 @@
+/* ==========================================================
+   SIGAP UI CSS
+   ----------------------------------------------------------
+   Style untuk komponen utama, animasi, dan utilitas website
+   ----------------------------------------------------------
+   Author: SIGAP Team
+   Last Update: 2024
+   ==========================================================
+*/
+
+/* =========================
+   1. ROOT COLOR VARIABLES
+   ========================= */
+:root {
+  --orange: #fa0;
+  --red: red;
+  --glow-rgb: 255, 102, 0;
+  --text-color: #fa0;
+  --danger-fill-color: #f23;
+  --danger-glow-rgb: 255, 0, 0;
+  --danger-text-color: #f23;
+  --gutter-size: 8px;
+}
+
+/* =========================
+   2. COLOR UTILITY CLASSES
+   ========================= */
+.red-color {
+  color: var(--red);
+}
+.red-bg {
+  background-color: var(--red);
+}
+.red-border {
+  border: 1px solid var(--red);
+}
+
+/* =========================
+   3. STRIP BAR & ANIMATIONS
+   ========================= */
+/* --- Orange Stripe --- */
+.strip-bar {
+  width: max(200vw, 2000px);
+  height: 30px;
+  display: inline-block;
+  margin-bottom: -5px;
+
+  --stripe-color: var(--orange);
+  --stripe-size: 15px;
+  --glow-color: rgba(255, 94, 0, 0.8);
+  --glow-size: 3px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--glow-color) calc(-1 * var(--glow-size)),
+    var(--stripe-color) 0,
+    var(--stripe-color) calc(var(--stripe-size) - var(--glow-size) / 2),
+    var(--glow-color) calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(2 * var(--stripe-size)),
+    var(--glow-color) calc(2 * var(--stripe-size) - var(--glow-size))
+  );
+}
+
+/* --- Red Stripe --- */
+.strip-bar-red {
+  width: max(200vw, 2000px);
+  height: 30px;
+  display: inline-block;
+  margin-bottom: -5px;
+
+  --stripe-color: var(--red);
+  --stripe-size: 15px;
+  --glow-color: rgba(255, 17, 0, 0.8);
+  --glow-size: 3px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--glow-color) calc(-1 * var(--glow-size)),
+    var(--stripe-color) 0,
+    var(--stripe-color) calc(var(--stripe-size) - var(--glow-size) / 2),
+    var(--glow-color) calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(2 * var(--stripe-size)),
+    var(--glow-color) calc(2 * var(--stripe-size) - var(--glow-size))
+  );
+}
+
+/* --- Vertical Orange Stripe --- */
+.strip-bar-vertical {
+  height: 200vw;
+  transform: translate3d(0, 0, 0);
+  --stripe-color: var(--orange);
+  --stripe-size: 15px;
+  --glow-color: rgba(255, 94, 0, 0.8);
+  --glow-size: 3px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--glow-color) calc(-1 * var(--glow-size)),
+    var(--stripe-color) 0,
+    var(--stripe-color) calc(var(--stripe-size) - var(--glow-size) / 2),
+    var(--glow-color) calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(2 * var(--stripe-size)),
+    var(--glow-color) calc(2 * var(--stripe-size) - var(--glow-size))
+  );
+}
+
+/* --- Vertical Red Stripe --- */
+.strip-bar-red-vertical {
+  height: 200vw;
+  transform: translate3d(0, 0, 0);
+  --stripe-color: var(--red);
+  --stripe-size: 15px;
+  --glow-color: rgba(255, 17, 0, 0.8);
+  --glow-size: 3px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--glow-color) calc(-1 * var(--glow-size)),
+    var(--stripe-color) 0,
+    var(--stripe-color) calc(var(--stripe-size) - var(--glow-size) / 2),
+    var(--glow-color) calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(2 * var(--stripe-size)),
+    var(--glow-color) calc(2 * var(--stripe-size) - var(--glow-size))
+  );
+}
+
+/* --- Animations for Stripe --- */
+@keyframes slideinBg {
+  from {
+    background-position: top;
+  }
+  to {
+    background-position: -100px 0px;
+  }
+}
+
+.strip-animation-vertical {
+  animation: stripAnimationVertical 15s infinite linear;
+}
+
+.strip-animation-vertical-reverse {
+  animation: stripAnimationVertical 15s infinite linear reverse;
+}
+
+.strip-animation {
+  animation: stripAnimation 10s infinite linear;
+}
+
+.strip-animation-reverse {
+  animation: stripAnimation 10s infinite linear reverse;
+}
+
+@keyframes stripAnimationVertical {
+  100% {
+    transform: translateY(-66%);
+  }
+}
+
+@keyframes stripAnimation {
+  100% {
+    transform: translateX(-66%);
+  }
+}
+
+/* =========================
+   4. STRIP & MARQUEE EFFECT
+   ========================= */
+.strip {
+  background-color: black;
+  width: 100vw;
+  border-top: 1px solid var(--red);
+  border-bottom: 1px solid var(--red);
+  position: fixed;
+}
+
+.strip-wrapper {
+  width: max(200vw, 2000px);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+@keyframes marquee1 {
+  0% {
+    transform: translateX(100%);
+  }
+
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes marquee2 {
+  from {
+    transform: translateX(0%);
+  }
+
+  to {
+    transform: translateX(-200%);
+  }
+}
+
+.loop-strip {
+  animation: loopStrip infinite linear;
+  animation-duration: 10s;
+}
+
+.loop-strip-reverse {
+  animation: loopStrip infinite linear reverse;
+  animation-duration: 10s;
+}
+
+.anim-duration-10 {
+  animation-duration: 10s !important;
+}
+
+.anim-duration-20 {
+  animation-duration: 20s !important;
+}
+
+@keyframes loopStrip {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* =========================
+   5. POPUP & TRANSITION ANIMATION
+   ========================= */
+.show-pop-up {
+  animation: showPopUp 0.3s ease-in-out forwards;
+}
+
+@keyframes showPopUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.close-pop-up {
+  animation: closePopUp 0.3s ease-in-out forwards !important;
+}
+
+@keyframes closePopUp {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+.vertical-reveal {
+  animation: verticalReveal 0.3s ease-in-out;
+}
+
+@keyframes verticalReveal {
+  0% {
+    transform: scaleY(0);
+  }
+
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+/* =========================
+   6. GLOW & BLINK EFFECTS
+   ========================= */
+.glow-effect {
+  animation: glowEffect 1s infinite;
+}
+
+@keyframes glowEffect {
+  0% {
+    -webkit-box-shadow: 0px 0px 66px 17px rgba(252, 60, 22, 0.59);
+    -moz-box-shadow: 0px 0px 66px 17px rgba(252, 60, 22, 0.59);
+    box-shadow: 0px 0px 66px 17px rgba(252, 60, 22, 0.59);
+  }
+
+  50% {
+    -webkit-box-shadow: 0px 0px 66px 44px rgba(252, 60, 22, 0.9);
+    -moz-box-shadow: 0px 0px 66px 44px rgba(252, 60, 22, 0.9);
+    box-shadow: 0px 0px 66px 44px rgba(252, 60, 22, 0.9);
+  }
+
+  100% {
+    -webkit-box-shadow: 0px 0px 66px 17px rgba(252, 60, 22, 0.59);
+    -moz-box-shadow: 0px 0px 66px 17px rgba(252, 60, 22, 0.59);
+    box-shadow: 0px 0px 66px 17px rgba(252, 60, 22, 0.59);
+  }
+}
+
+.blink {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+/* =========================
+   7. MARKER & MAPBOX STYLES
+   ========================= */
+.marker-daerah {
+  width: auto;
+  height: 25px;
+
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.marker-daerah p {
+  border: 1px black solid;
+  color: black;
+  background-color: red;
+  padding: 2px;
+  font-size: 8px;
+  text-transform: uppercase;
+  max-width: 75px;
+  line-height: 1;
+  text-align: center;
+  font-weight: bold;
+}
+
+.marker-gempa {
+  font-size: 20px;
+  color: red;
+  cursor: pointer;
+}
+
+.marker-gempa-wave {
+  border: 3px red solid;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 20px;
+  color: red;
+  cursor: pointer;
+}
+
+.mapboxgl-popup-close-button {
+  display: none !important;
+}
+
+.mapboxgl-popup {
+  width: auto;
+}
+
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  border-top-color: unset;
+  height: 70px;
+  width: 3px;
+  background-color: white;
+  border: unset;
+}
+
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+  border-top-color: unset;
+  height: 70px;
+  width: 3px;
+  background-color: white;
+  border: unset;
+}
+
+.mapboxgl-popup-content {
+  background-color: unset;
+  border: unset;
+  border-radius: 0.5rem !important;
+  padding: 0 !important;
+  max-width: 320px;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  overflow: hidden;
+}
+
+/* =========================
+   8. WARNING & SHAPE COMPONENTS
+   ========================= */
+.warning-wrapper {
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  height: 200px;
+  max-width: 50%;
+  margin: auto;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  animation: showWarningAlert 0.3s ease-in-out forwards;
+  flex-direction: column;
+  align-items: center;
+}
+
+.long-shape {
+  position: relative;
+  width: 500px;
+  display: flex;
+  justify-content: center;
+}
+
+.long-shape .shape {
+  height: 150px;
+  width: 300px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.shape {
+  position: absolute;
+  margin: auto;
+}
+
+.long-shape .bg {
+  background-color: #e60003;
+}
+
+.long-shape .fg {
+  background-color: #e60003;
+  scale: 0.98 0.92;
+}
+
+.long-shape .br {
+  background-color: black;
+  scale: 0.99 0.96;
+}
+
+.long-shape .hex {
+  margin-top: 30px;
+  transform: scale(1.5);
+}
+
+.basic-shape {
+  height: 100px;
+  width: 115px;
+  transform: scale(1.5);
+  z-index: 99;
+}
+
+.basic-shape .hex {
+  position: absolute;
+  margin: auto;
+}
+
+.basic-shape .hex:nth-child(1) {
+  scale: 0.95;
+}
+
+.basic-shape .hex:nth-child(2) {
+  scale: 0.9;
+}
+
+.basic-shape .hex:nth-child(3) {
+  scale: 0.85;
+}
+
+.basic-shape .hex:nth-child(4) {
+  scale: 0.8;
+}
+
+.shape .hex:nth-child(1) {
+  margin-left: -20%;
+}
+
+.shape .hex:nth-child(2) {
+  margin-right: -20%;
+}
+
+.warning {
+  height: 500px;
+  width: 450px;
+}
+
+.long-hex {
+  position: relative;
+  height: 150px;
+  width: 275px;
+  background-image: url('/images/long_shape.svg');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.warning-black-hex {
+  position: relative;
+  height: 100px;
+  width: 100px;
+  background-image: url('/images/warning_shape_black.svg');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.warning-black {
+  position: relative;
+  height: 40px;
+  width: 40px;
+  background-image: url('/images/warning_gempa_black.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.warning-yellow {
+  position: relative;
+  height: 80px;
+  width: 50px;
+  background-image: url('/images/warning_gempa_red_yellow.svg');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.warning-tsunami-yellow {
+  position: relative;
+  height: 80px;
+  width: 50px;
+  background-image: url('/images/warning_tsunami_yellow.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.basic-hex {
+  position: relative;
+  height: 100px;
+  width: 100px;
+  background-image: url('/images/hex_shape.svg');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.animation-delay-1 {
+  animation-delay: 1s;
+}
+
+.animation-delay-2 {
+  animation-delay: 2s;
+}
+
+.animation-delay-3 {
+  animation-delay: 3s;
+}
+
+.animation-delay-4 {
+  animation-delay: 4s;
+}
+
+.warning .info .basic-hex:nth-child(1) {
+  animation-delay: 2s;
+}
+
+.warning .info .basic-hex:nth-child(2) {
+  animation-delay: 2.2s;
+}
+
+.warning .info .basic-hex:nth-child(3) {
+  animation-delay: 2.4s;
+}
+
+.animation-fast {
+  animation-duration: 0.5s;
+}
+
+.blink-fast {
+  animation-duration: 0.1s;
+}
+
+/* =========================
+   9. OVERLAY & LIST COMPONENTS
+   ========================= */
+.overlay-bg {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.list-event {
+  display: block;
+  font: 400 16px 'Roboto Condensed';
+  letter-spacing: -1px;
+  line-height: 1;
+  padding: 1px calc(var(--gutter-size) - 3px);
+  text-transform: uppercase;
+  user-select: none;
+  white-space: nowrap;
+  --text-glow-color: rgba(var(--glow-rgb), 0.5);
+  color: var(--text-color);
+}
+
+.text-glow-red {
+  --text-glow-color: rgba(var(--danger-glow-rgb), 0.5);
+  color: var(--danger-text-color);
+}
+
+.text-glow {
+  --text-glow-color: rgba(var(--glow-rgb), 0.5);
+  color: var(--text-color) !important;
+}
+
+.bordered {
+  color: var(--text-color);
+  --border-glow-color: rgba(var(--glow-rgb), 0.7);
+  border-radius: var(--gutter-size);
+  border-style: solid;
+  border-width: 1px;
+  border-color: unset;
+  box-shadow:
+    inset 0 0 0 1px var(--border-glow-color),
+    0 0 0 1px var(--border-glow-color);
+}
+
+.red-bordered {
+  color: var(--danger-text-color);
+  --border-glow-color: rgba(var(--danger-glow-rgb), 0.7);
+  border-radius: var(--gutter-size);
+  border-style: solid;
+  border-width: 1px;
+  border-color: unset;
+  box-shadow:
+    inset 0 0 0 1px var(--border-glow-color),
+    0 0 0 1px var(--border-glow-color);
+}
+
+.red-bordered-bottom {
+  color: var(--danger-text-color);
+  --border-glow-color: rgba(var(--danger-glow-rgb), 0.7);
+  border-color: unset;
+  border-bottom: 1px solid red;
+  box-shadow:
+    inset 0 0 0 1px var(--border-glow-color),
+    0 0 0 1px var(--border-glow-color);
+}
+
+.red-bordered-top {
+  color: var(--danger-text-color);
+  --border-glow-color: rgba(var(--danger-glow-rgb), 0.7);
+  border-color: unset;
+  border-top: 1px solid var(--danger-glow-rgb);
+  box-shadow:
+    inset 0 0 0 1px var(--border-glow-color),
+    0 0 0 1px var(--border-glow-color);
+}
+
+/* =========================
+   10. CARD COMPONENTS
+   ========================= */
+.card {
+  background-color: black;
+  transition: 0.3s;
+}
+
+.card-header {
+  padding: 6px;
+  color: var(--orange);
+  position: relative;
+  border-radius: 10px 10px 0px 0px;
+}
+
+.card-footer {
+  padding: 6px;
+  border-top: 3px var(--red) solid;
+  color: var(--orange);
+  position: relative;
+  border-radius: 0px 0px 10px 10px;
+}
+
+.card-content {
+  padding: 12px;
+}
+
+.card-float {
+  transition: all 0.3s ease-in-out;
+}
+
+.card-float .card-content {
+  display: block;
+  max-height: 45vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* =========================
+   11. JAJAR GENJANG & DAERAH LIST
+   ========================= */
+.jajar-genjang {
+  height: 30px;
+  width: 100%;
+  transform: skew(15deg);
+  -webkit-transform: skew(15deg);
+  -moz-transform: skew(15deg);
+  -o-transform: skew(15deg);
+  background-color: var(--orange);
+  -webkit-box-shadow: 0px 0px 5px 0px rgba(252, 114, 22, 1);
+  -moz-box-shadow: 0px 0px 5px 0px rgba(252, 114, 22, 1);
+  box-shadow: 0px 0px 5px 0px rgba(252, 114, 22, 1);
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.jajar-genjang .time-countdown {
+}
+
+.jajar-genjang.danger {
+  background-color: var(--red);
+  -webkit-box-shadow: 0px 0px 5px 0px rgba(250, 23, 23, 1);
+  -moz-box-shadow: 0px 0px 5px 0px rgba(250, 23, 23, 1);
+  box-shadow: 0px 0px 5px 0px rgba(250, 23, 23, 1);
+}
+
+.jajar-genjang p {
+  transform: skew(-15deg);
+  -webkit-transform: skew(-15deg);
+  -moz-transform: skew(-15deg);
+  -o-transform: skew(-15deg);
+  color: black;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.pinggir-jajar-genjang {
+  height: 30px;
+  width: 30px;
+  transform: skew(15deg);
+  -webkit-transform: skew(15deg);
+  -moz-transform: skew(15deg);
+  -o-transform: skew(15deg);
+}
+
+.item-daerah {
+  width: 100%;
+  position: relative;
+}
+
+.list-daerah .card-content {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.item-daerah.danger {
+}
+
+.item-daerah .content {
+  position: absolute;
+  font-size: 12px;
+  color: black;
+  font-weight: bold;
+}
+
+.item-daerah .pinggir-jajar-genjang {
+  background-color: var(--orange);
+}
+
+.item-daerah.danger .pinggir-jajar-genjang {
+  background-color: var(--red);
+}
+
+.time-countdown {
+  font-family: 'DS-Digital';
+}
+
+.text-time {
+  font-family: 'DS-Digital';
+}
+
+/* =========================
+   12. CUSTOM SCROLLBAR
+   ========================= */
+/* .custom-scrollbar::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    background-color: rgb(61, 61, 61);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 12px;
+    background-color: rgb(61, 61, 61);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, .3);
+    background-color: var(--red);
+} */
+
+/* =========================
+   13. SLIDE ANIMATION
+   ========================= */
+.slide-in-left {
+  animation: slideInLeft 0.5s forwards;
+}
+
+@keyframes slideInLeft {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* =========================
+   14. LABEL & RESPONSIVE
+   ========================= */
+label#internal {
+  --decal-width: 50px;
+  --label-corner-size: 3px;
+  --label-gutter-size: 5px;
+}
+
+.label {
+  overflow: hidden;
+  font: 400 2rem 'Roboto Condensed';
+  letter-spacing: -1px;
+  line-height: 1;
+  padding-right: 0px;
+  text-transform: uppercase;
+  user-select: none;
+  white-space: nowrap;
+  --text-glow-color: rgba(var(--glow-rgb), 0.5);
+  color: var(--text-color);
+  text-shadow:
+    -1px 1px 0 var(--text-glow-color),
+    1px -1px 0 var(--text-glow-color),
+    -1px -1px 0 var(--text-glow-color),
+    1px 1px 0 var(--text-glow-color);
+}
+
+.label#internal .decal {
+  border-radius: calc(var(--label-corner-size) - 1px);
+  display: block;
+  height: 100px;
+  width: 100%;
+}
+
+.-striped {
+  --stripe-color: var(--danger-fill-color);
+  --stripe-size: 15px;
+  --glow-color: rgba(var(--danger-glow-rgb), 0.8);
+  --glow-size: 3px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--glow-color) calc(-1 * var(--glow-size)),
+    var(--stripe-color) 0,
+    var(--stripe-color) calc(var(--stripe-size) - var(--glow-size) / 2),
+    var(--glow-color) calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(var(--stripe-size) + var(--glow-size) / 2),
+    transparent calc(2 * var(--stripe-size)),
+    var(--glow-color) calc(2 * var(--stripe-size) - var(--glow-size))
+  );
+  box-shadow: inset 0 0 1px calc(var(--glow-size) / 2) var(--shade-3);
+}
+
+.-blink {
+  animation-name: blink;
+  animation-duration: var(--blink-duration);
+  animation-iteration-count: infinite;
+  animation-timing-function: steps(1);
+}
+
+.label#internal .text.-characters {
+  font-size: 3.5rem;
+  padding-top: var(--label-gutter-size);
+}
+
+/* --- Responsive for Mobile --- */
+@media (max-width: 768px) {
+  .card-float .card-content {
+    height: 0px;
+    padding: 0px;
+  }
+
+  .card-float.open .card-content {
+    height: unset;
+    padding: 6px;
+  }
+
+  .card-float {
+    margin: auto;
+    right: 0.25rem;
+    left: 0.25rem;
+  }
+
+  .label#internal .decal {
+    width: 40px;
+  }
+
+  .card-header {
+    cursor: pointer;
+  }
+}
+
+/* --- Responsive for Tablet --- */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .label#internal .text.-characters {
+    font-size: 3.5rem;
+  }
+
+  .label#internal .text {
+    font-size: 2.5rem;
+  }
+
+  .label#internal .decal {
+    width: 40px;
+  }
+}
+
+/* =========================
+   15. ICONS & LOADER
+   ========================= */
+.github-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-image: url('https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg');
+  background-color: white;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.bmkg-icon {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background-image: url('/images/logo-bmkg.webp');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.loader {
+  width: 48px;
+  height: 48px;
+  display: inline-block;
+  position: relative;
+}
+
+.loader::after,
+.loader::before {
+  content: '';
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--orange);
+  position: absolute;
+  left: 0;
+  top: 0;
+  animation: scaleOut 2s ease-in-out infinite;
+}
+
+.loader::after {
+  border-color: var(--red);
+  animation-delay: 1s;
+}
+
+#loading-screen {
+  background-color: black;
+}
+
+@keyframes scaleOut {
+  0% {
+    transform: scale(0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* =========================
+   16. CIRCLES ANIMATION
+   ========================= */
+.circles .circle1 {
+  animation-delay: 1s;
+}
+
+.circles .circle2 {
+  animation-delay: 2s;
+}
+
+.circles .circle3 {
+  animation-delay: 3s;
+}
+
+.circles {
+  height: 200px;
+  width: 200px;
+  margin: auto;
+}
+
+/* .circles div {
+    animation: growAndFade 3s infinite ease-out;
+    background-color: rgb(156, 94, 0);
+    border-radius: 50%;
+    height: 200px;
+    width: 200px;
+    opacity: 0;
+    position: absolute;
+    box-shadow: 0 0 10px 5px rgba(156, 75, 0, 0.5);
+} */
+
+@keyframes growAndFade {
+  0% {
+    opacity: 0.25;
+    transform: scale(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* =========================
+   17. HEXAGON BACKGROUND
+   ========================= */
+.main {
+  width: calc(max(120vh, 120vw) + 100px);
+  margin-left: -35vh;
+  transform: translateY(min(-29vw, -40vw));
+  display: grid;
+  grid-template-columns: repeat(auto-fit, calc(var(--s) + 2 * var(--mh)));
+  justify-content: center;
+  --s: 80px; /* size */
+  --r: 1.15; /* ratio */
+  --h: 0.5;
+  --v: 0.25;
+  --hc: calc(clamp(0, var(--h), 0.5) * var(--s));
+  --vc: calc(clamp(0, var(--v), 0.5) * var(--s) * var(--r));
+  --mv: 1px; /* vertical */
+  --mh: calc(var(--mv) + (var(--s) - 2 * var(--hc)) / 2); /* horizontal */
+  --f: calc(2 * var(--s) * var(--r) + 4 * var(--mv) - 2 * var(--vc) - 2px);
+}
+
+.hex-bg {
+  grid-column: 1/-1;
+  margin: 0 auto;
+  font-size: 0;
+  position: relative;
+}
+
+.hex-bg div {
+  width: var(--s);
+  margin: var(--mv) var(--mh);
+  height: calc(var(--s) * var(--r));
+  display: inline-block;
+  font-size: initial;
+  margin-bottom: calc(var(--mv) - var(--vc));
+}
+
+.hex-bg::before {
+  content: '';
+  width: calc(var(--s) / 2 + var(--mh));
+  float: left;
+  height: 100%;
+  shape-outside: repeating-linear-gradient(
+    transparent 0 calc(var(--f) - 2px),
+    #fff 0 var(--f)
+  );
+}
+
+.hex-bg div {
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  text-align: center;
+}
+
+.hex-bg div p {
+  text-align: center;
+  margin-top: 20px;
+  color: black;
+  font-size: 10px;
+  transform: rotate(90deg);
+}
+
+.hex-bg img {
+  display: block;
+  position: relative;
+  transform: rotate(90deg) scale(1.2);
+}
+
+.hex-bg div::before {
+  position: absolute;
+  display: flex;
+}
+
+.hex-bg div {
+  animation: showPopUp 0.3s ease-in-out forwards;
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+@keyframes show {
+  10% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* =========================
+   18. MAPBOX OVERRIDES
+   ========================= */
+.mapbox-logo {
+  display: none !important;
+}
+
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
+.mapbox-gl-draw_point {
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: auto;
+  background-image: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+PHN2ZyAgIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgICB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIgICB4bWxuczpzdmc9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiICAgeG1sbnM6aW5rc2NhcGU9Imh0dHA6Ly93d3cuaW5rc2NhcGUub3JnL25hbWVzcGFjZXMvaW5rc2NhcGUiICAgd2lkdGg9IjIwIiAgIGhlaWdodD0iMjAiICAgdmlld0JveD0iMCAwIDIwIDIwIiAgIGlkPSJzdmcxOTE2NyIgICB2ZXJzaW9uPSIxLjEiICAgaW5rc2NhcGU6dmVyc2lvbj0iMC45MStkZXZlbCtvc3htZW51IHIxMjkxMSIgICBzb2RpcG9kaTpkb2NuYW1lPSJtYXJrZXIuc3ZnIj4gIDxkZWZzICAgICBpZD0iZGVmczE5MTY5IiAvPiAgPHNvZGlwb2RpOm5hbWVkdmlldyAgICAgaWQ9ImJhc2UiICAgICBwYWdlY29sb3I9IiNmZmZmZmYiICAgICBib3JkZXJjb2xvcj0iIzY2NjY2NiIgICAgIGJvcmRlcm9wYWNpdHk9IjEuMCIgICAgIGlua3NjYXBlOnBhZ2VvcGFjaXR5PSIwLjAiICAgICBpbmtzY2FwZTpwYWdlc2hhZG93PSIyIiAgICAgaW5rc2NhcGU6em9vbT0iMTYiICAgICBpbmtzY2FwZTpjeD0iMTQuMTY0MjUzIiAgICAgaW5rc2NhcGU6Y3k9IjguODg1NzIiICAgICBpbmtzY2FwZTpkb2N1bWVudC11bml0cz0icHgiICAgICBpbmtzY2FwZTpjdXJyZW50LWxheWVyPSJsYXllcjEiICAgICBzaG93Z3JpZD0iZmFsc2UiICAgICB1bml0cz0icHgiICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjEyODAiICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSI3NTEiICAgICBpbmtzY2FwZTp3aW5kb3cteD0iMjA4IiAgICAgaW5rc2NhcGU6d2luZG93LXk9IjE5MCIgICAgIGlua3NjYXBlOndpbmRvdy1tYXhpbWl6ZWQ9IjAiICAgICBpbmtzY2FwZTpvYmplY3Qtbm9kZXM9InRydWUiPiAgICA8aW5rc2NhcGU6Z3JpZCAgICAgICB0eXBlPSJ4eWdyaWQiICAgICAgIGlkPSJncmlkMTk3MTUiIC8+ICA8L3NvZGlwb2RpOm5hbWVkdmlldz4gIDxtZXRhZGF0YSAgICAgaWQ9Im1ldGFkYXRhMTkxNzIiPiAgICA8cmRmOlJERj4gICAgICA8Y2M6V29yayAgICAgICAgIHJkZjphYm91dD0iIj4gICAgICAgIDxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0PiAgICAgICAgPGRjOnR5cGUgICAgICAgICAgIHJkZjpyZXNvdXJjZT0iaHR0cDovL3B1cmwub3JnL2RjL2RjbWl0eXBlL1N0aWxsSW1hZ2UiIC8+ICAgICAgICA8ZGM6dGl0bGUgLz4gICAgICA8L2NjOldvcms+ICAgIDwvcmRmOlJERj4gIDwvbWV0YWRhdGE+ICA8ZyAgICAgaW5rc2NhcGU6bGFiZWw9IkxheWVyIDEiICAgICBpbmtzY2FwZTpncm91cG1vZGU9ImxheWVyIiAgICAgaWQ9ImxheWVyMSIgICAgIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAsLTEwMzIuMzYyMikiPiAgICA8cGF0aCAgICAgICBzdHlsZT0iY29sb3I6IzAwMDAwMDtjbGlwLXJ1bGU6bm9uemVybztkaXNwbGF5OmlubGluZTtvdmVyZmxvdzp2aXNpYmxlO3Zpc2liaWxpdHk6dmlzaWJsZTtvcGFjaXR5OjE7aXNvbGF0aW9uOmF1dG87bWl4LWJsZW5kLW1vZGU6bm9ybWFsO2NvbG9yLWludGVycG9sYXRpb246c1JHQjtjb2xvci1pbnRlcnBvbGF0aW9uLWZpbHRlcnM6bGluZWFyUkdCO3NvbGlkLWNvbG9yOiMwMDAwMDA7c29saWQtb3BhY2l0eToxO2ZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtmaWxsLXJ1bGU6ZXZlbm9kZDtzdHJva2U6bm9uZTtzdHJva2Utd2lkdGg6MjtzdHJva2UtbGluZWNhcDpyb3VuZDtzdHJva2UtbGluZWpvaW46cm91bmQ7c3Ryb2tlLW1pdGVybGltaXQ6NDtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLWRhc2hvZmZzZXQ6MDtzdHJva2Utb3BhY2l0eToxO21hcmtlcjpub25lO2NvbG9yLXJlbmRlcmluZzphdXRvO2ltYWdlLXJlbmRlcmluZzphdXRvO3NoYXBlLXJlbmRlcmluZzphdXRvO3RleHQtcmVuZGVyaW5nOmF1dG87ZW5hYmxlLWJhY2tncm91bmQ6YWNjdW11bGF0ZSIgICAgICAgZD0ibSAzNiwxMDQwLjM2MjIgYyA2ZS02LDMuMzA5MyAtNS45ODg2MTIsMTAgLTUuOTg4NjEyLDEwIDAsMCAtNS45OTg3NzYsLTYuNjY4IC02LjAxMTM0NSwtOS45NzcyIC0wLjAxMjU3LC0zLjMwOTIgMi42NTY1NzYsLTYuMDAzOSA1Ljk2NTc5MiwtNi4wMjI3IDMuMzA5MTg5LC0wLjAxOSA2LjAwODg0LDIuNjQ1MiA2LjAzMzk5Miw1Ljk1NDMiICAgICAgIGlkPSJwYXRoMTI1NjEiICAgICAgIGlua3NjYXBlOmNvbm5lY3Rvci1jdXJ2YXR1cmU9IjAiICAgICAgIHNvZGlwb2RpOm5vZGV0eXBlcz0iY2Nzc2MiIC8+ICAgIDxwYXRoICAgICAgIHN0eWxlPSJjb2xvcjojMDAwMDAwO2NsaXAtcnVsZTpub256ZXJvO2Rpc3BsYXk6aW5saW5lO292ZXJmbG93OnZpc2libGU7dmlzaWJpbGl0eTp2aXNpYmxlO29wYWNpdHk6MTtpc29sYXRpb246YXV0bzttaXgtYmxlbmQtbW9kZTpub3JtYWw7Y29sb3ItaW50ZXJwb2xhdGlvbjpzUkdCO2NvbG9yLWludGVycG9sYXRpb24tZmlsdGVyczpsaW5lYXJSR0I7c29saWQtY29sb3I6IzAwMDAwMDtzb2xpZC1vcGFjaXR5OjE7ZmlsbDojZmZmZmZmO2ZpbGwtb3BhY2l0eToxO2ZpbGwtcnVsZTpldmVub2RkO3N0cm9rZTpub25lO3N0cm9rZS13aWR0aDoyO3N0cm9rZS1saW5lY2FwOnJvdW5kO3N0cm9rZS1saW5lam9pbjpyb3VuZDtzdHJva2UtbWl0ZXJsaW1pdDo0O3N0cm9rZS1kYXNoYXJyYXk6bm9uZTtzdHJva2UtZGFzaG9mZnNldDowO3N0cm9rZS1vcGFjaXR5OjE7bWFya2VyOm5vbmU7Y29sb3ItcmVuZGVyaW5nOmF1dG87aW1hZ2UtcmVuZGVyaW5nOmF1dG87c2hhcGUtcmVuZGVyaW5nOmF1dG87dGV4dC1yZW5kZXJpbmc6YXV0bztlbmFibGUtYmFja2dyb3VuZDphY2N1bXVsYXRlIiAgICAgICBkPSJtIDM0LjAwMDExNSwxMDQwLjM2MjIgYyAtNWUtNiwyLjIwNjIgLTMuOTkyNTIzLDcuMDAwMSAtMy45OTI1MjMsNy4wMDAxIDAsMCAtMy45OTkyOTEsLTQuNzc4NyAtNC4wMDc2NzksLTYuOTg0OSAtMC4wMDg0LC0yLjIwNjIgMS43NzEwODIsLTQuMDAyNyAzLjk3NzMxLC00LjAxNTMgMi4yMDYyMSwtMC4wMTMgNC4wMDYwMzcsMS43NjM1IDQuMDIyNzc3LDMuOTY5NyIgICAgICAgaWQ9InBhdGgxMjU2MyIgICAgICAgaW5rc2NhcGU6Y29ubmVjdG9yLWN1cnZhdHVyZT0iMCIgICAgICAgc29kaXBvZGk6bm9kZXR5cGVzPSJjY2NzYyIgLz4gICAgPHBhdGggICAgICAgc3R5bGU9ImNvbG9yOiMwMDAwMDA7Y2xpcC1ydWxlOm5vbnplcm87ZGlzcGxheTppbmxpbmU7b3ZlcmZsb3c6dmlzaWJsZTt2aXNpYmlsaXR5OnZpc2libGU7b3BhY2l0eToxO2lzb2xhdGlvbjphdXRvO21peC1ibGVuZC1tb2RlOm5vcm1hbDtjb2xvci1pbnRlcnBvbGF0aW9uOnNSR0I7Y29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzOmxpbmVhclJHQjtzb2xpZC1jb2xvcjojMDAwMDAwO3NvbGlkLW9wYWNpdHk6MTtmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjI7c3Ryb2tlLWxpbmVjYXA6cm91bmQ7c3Ryb2tlLWxpbmVqb2luOnJvdW5kO3N0cm9rZS1taXRlcmxpbWl0OjQ7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1kYXNob2Zmc2V0OjA7c3Ryb2tlLW9wYWNpdHk6MTttYXJrZXI6bm9uZTtjb2xvci1yZW5kZXJpbmc6YXV0bztpbWFnZS1yZW5kZXJpbmc6YXV0bztzaGFwZS1yZW5kZXJpbmc6YXV0bzt0ZXh0LXJlbmRlcmluZzphdXRvO2VuYWJsZS1iYWNrZ3JvdW5kOmFjY3VtdWxhdGUiICAgICAgIGQ9Ik0gOS45NjY3OTY5LDEwMTQuMzYyMiBDIDYuNjU3NTgwOSwxMDE0LjM4MSAzLjk4NzQzLDEwMTcuMDc2NCA0LDEwMjAuMzg1NiBjIDAuMDEyNTY5LDMuMzA5MiA2LjAxMTcxOSw4Ljk3NjYgNi4wMTE3MTksOC45NzY2IDAsMCA1Ljk4ODI4NywtNS42OTA3IDUuOTg4MjgxLC05IGwgMCwtMC4wNDUgYyAtMC4wMjUxNSwtMy4zMDkxIC0yLjcyNDAxNCwtNS45NzQxIC02LjAzMzIwMzEsLTUuOTU1MSB6IG0gMC4wMDk3NywyIGMgMi4yMDYyMDYxLC0wLjAxMyA0LjAwNjY5MzEsMS43NjI2IDQuMDIzNDMzMSwzLjk2ODggbCAwLDAuMDMxIGMgLTVlLTYsMi4yMDYyIC0zLjk5MjE4OCw2IC0zLjk5MjE4OCw2IDAsMCAtMy45OTk0MjQsLTMuNzc4MiAtNC4wMDc4MTIsLTUuOTg0NCAtMC4wMDg0LC0yLjIwNjIgMS43NzAzMzQ1LC00LjAwMyAzLjk3NjU2MjUsLTQuMDE1NiB6IiAgICAgICBpZD0icGF0aDEyNTY4IiAgICAgICBpbmtzY2FwZTpjb25uZWN0b3ItY3VydmF0dXJlPSIwIiAgICAgICBzb2RpcG9kaTpub2RldHlwZXM9ImNzY3NjY2Njc2NzYyIgLz4gICAgPHBhdGggICAgICAgc3R5bGU9Im9wYWNpdHk6MTtmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjI7c3Ryb2tlLWxpbmVjYXA6YnV0dDtzdHJva2UtbGluZWpvaW46YmV2ZWw7c3Ryb2tlLW1pdGVybGltaXQ6NDtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLWRhc2hvZmZzZXQ6MDtzdHJva2Utb3BhY2l0eToxO21hcmtlcjpub25lIiAgICAgICBkPSJNIDEwIDIgQyA2LjY4NjI5MiAyIDQgNC42ODYzIDQgOCBDIDQgMTEuMzEzNyAxMCAxNyAxMCAxNyBDIDEwIDE3IDE2IDExLjMxMzcgMTYgOCBDIDE2IDQuNjg2MyAxMy4zMTM3MDggMiAxMCAyIHogTSAxMCA0IEMgMTIuMDcxMDY4IDQgMTMuNzUgNS42Nzg5IDEzLjc1IDcuNzUgQyAxMy43NSA5LjIwNTMyNzggMTEuOTMxMTEgMTEuNjQ0MzkzIDEwLjgzMDA3OCAxMyBMIDkuMTY5OTIxOSAxMyBDIDguMDY4ODkwMyAxMS42NDQzOTMgNi4yNSA5LjIwNTMyNzggNi4yNSA3Ljc1IEMgNi4yNSA1LjY3ODkgNy45Mjg5MzIgNCAxMCA0IHogIiAgICAgICB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwLDEwMzIuMzYyMikiICAgICAgIGlkPSJwYXRoMTczMDUiIC8+ICA8L2c+PC9zdmc+);
+}
+
+/* =========================
+   19. DIGITAL CLOCK
+   ========================= */
+.digital-clock {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #ffb700;
+  background-color: #000;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #333;
+  text-align: center;
+  letter-spacing: 0.05rem;
+  box-shadow: 0 0 5px rgba(255, 183, 0, 0.5);
+}
+
+/* =========================
+   20. MAPBOX CONTAINER & FONT
+   ========================= */
+.mapbox-container {
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto Condensed', Arial, Helvetica, sans-serif;
+}
+
+.mapboxgl-map {
+  font-family: 'Roboto Condensed', Arial, Helvetica, sans-serif;
+}
+
+/* =========================
+   21. RANDOM
+   ========================= */
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* .incident-logs-popup .mapboxgl-popup-content {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0.5rem;
+} */
+
+/* ==========================================================
+   END OF SIGAP UI CSS
+   ==========================================================
+*/
