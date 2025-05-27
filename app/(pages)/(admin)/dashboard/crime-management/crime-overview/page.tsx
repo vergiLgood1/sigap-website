@@ -26,7 +26,7 @@ const bentoGridItems: BentoGridItemProps[] = [
     },
     {
         title: "Crime Statistics",
-        description: "Weekly crime rate analysis",
+        description: "Monthly crime rate analysis",
         icon: <BarChart3 className="w-5 h-5" />,
         component: <CrimeStatistics />,
     },
@@ -50,8 +50,8 @@ const bentoGridItems: BentoGridItemProps[] = [
         component: <EvidenceTracking />,
     },
     {
-        title: "Persons of Interest",
-        description: "Individuals under investigation",
+        title: "User Reported Incidents",
+        description: "Reports from the community",
         icon: <User className="w-5 h-5" />,
         component: <PersonsOfInterest />,
     },
@@ -62,7 +62,7 @@ const bentoGridItems: BentoGridItemProps[] = [
         component: <DepartmentPerformance />,
     },
     {
-        title: "Recent Arrests",
+        title: "Recent Incidents by Category",
         description: "Last 24 hours",
         icon: <Users className="w-5 h-5" />,
         component: <RecentArrests />,
