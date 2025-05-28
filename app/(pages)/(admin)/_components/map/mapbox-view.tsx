@@ -4,11 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-import { IconMapPin } from "@tabler/icons-react";
-
 // You should store this in an environment variable
 const MAPBOX_ACCESS_TOKEN =
-  process.env.SIGAP_MAPBOX_ACCESS_TOKEN ||
+  process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ||
   "pk.eyJ1IjoiZGl5b2FuZ2dhcmEiLCJhIjoiY203ZG5rcjhzMDA4djJqcXpzMXpoZzh6cSJ9.ZMiOrYWSYsabmZp3lnI5xw";
 
 mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;

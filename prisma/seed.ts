@@ -33,19 +33,19 @@ class DatabaseSeeder {
 
     // Daftar semua seeders di sini
     this.seeders = [
-      // new RoleSeeder(prisma),
-      // new ResourceSeeder(prisma),
-      // new PermissionSeeder(prisma),
-      // new CrimeCategoriesSeeder(prisma),
-      // new GeoJSONSeeder(prisma),
-      // new UnitSeeder(prisma),
+      new RoleSeeder(prisma),
+      new ResourceSeeder(prisma),
+      new PermissionSeeder(prisma),
+      new CrimeCategoriesSeeder(prisma),
+      new GeoJSONSeeder(prisma),
+      new UnitSeeder(prisma),
       new PatrolUnitsSeeder(prisma),
-      // new OfficersSeeder(prisma),
-      // new DemographicsSeeder(prisma),
-      // new CrimesSeeder(prisma),
-      // new CrimeIncidentsByUnitSeeder(prisma),
-      // new CrimeIncidentsByTypeSeeder(prisma),
-      // new IncidentLogSeeder(prisma),
+      new OfficersSeeder(prisma),
+      new DemographicsSeeder(prisma),
+      new CrimesSeeder(prisma),
+      new CrimeIncidentsByUnitSeeder(prisma),
+      new CrimeIncidentsByTypeSeeder(prisma),
+      new IncidentLogSeeder(prisma),
     ];
   }
 

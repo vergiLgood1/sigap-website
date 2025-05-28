@@ -35,7 +35,7 @@ export class PatrolUnitsSeeder {
         return this.tacticalCallsigns[Math.floor(Math.random() * this.tacticalCallsigns.length)];
     }
 
-    async run(isUpdate: boolean = true): Promise<void> {
+    async run(isUpdate: boolean = false): Promise<void> {
         console.log('🚓 Seeding patrol units...');
 
         if (isUpdate) {
