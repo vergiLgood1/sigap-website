@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Button } from "@react-email/components";
+
 import { IconMapPin } from "@tabler/icons-react";
 
 // You should store this in an environment variable
