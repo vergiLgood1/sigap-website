@@ -62,7 +62,7 @@ export function ProfileForm({ user, onSuccess }: ProfileFormProps) {
     handleFileChange,
     handleAvatarClick,
     onSubmit,
-  } = useProfileFormHandlers({ user, onSuccess })
+  } = useProfileFormHandlers()
 
   return (
     <Form {...form}>
