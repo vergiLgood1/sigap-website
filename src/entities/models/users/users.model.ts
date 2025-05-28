@@ -55,6 +55,9 @@ export const UserSchema = z.object({
     .object({
       id: z.string().optional(),
       user_id: z.string(),
+      nik: z.string().nullable().optional(),
+      birth_place: z.string().nullable().optional(),
+
       avatar: z.string().nullable().optional(),
       username: z.string().nullable().optional(),
       first_name: z.string().nullable().optional(),

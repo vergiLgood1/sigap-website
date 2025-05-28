@@ -139,6 +139,52 @@ export async function getCurrentUser() {
   );
 }
 
+export async function getAvailableRoles() {
+  const instrumentationService = getInjection('IInstrumentationService');
+  return await instrumentationService.instrumentServerAction(
+    'getUserRoles',
+    { recordResponse: true },
+    async () => {
+      try {
+
+        return await db.roles.findMany({})
+
+      } catch (err) {
+        if (err instanceof InputParseError) {
+          // return {
+          //   error: err.message,
+          // };
+
+          throw new InputParseError(err.message);
+        }
+
+        if (err instanceof UnauthenticatedError) {
+          // return {
+          //   error: 'Must be logged in to create a user.',
+          // };
+          throw new UnauthenticatedError('Must be logged in to get user roles.');
+        }
+
+        if (err instanceof AuthenticationError) {
+          // return {
+          //   error: 'User not found.',
+          // };
+
+          throw new AuthenticationError('There was an error with the credentials. Please try again or contact support.');
+        }
+
+        const crashReporterService = getInjection('ICrashReporterService');
+        crashReporterService.report(err);
+        // return {
+        //   error:
+        //     'An error happened. The developers have been notified. Please try again later.',
+        // };
+        throw new Error('An error happened. The developers have been notified. Please try again later.');
+      }
+    }
+  );
+}
+
 export async function getUserById(credential: ICredentialGetUserByIdSchema) {
   const instrumentationService = getInjection('IInstrumentationService');
   return await instrumentationService.instrumentServerAction(

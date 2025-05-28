@@ -1,6 +1,6 @@
 import { IUserSchema } from "@/src/entities/models/users/users.model";
 import { useQuery } from "@tanstack/react-query";
-import { getCurrentUser, getUserByEmail, getUserById, getUserByUsername, getUsers } from "../action";
+import { getAvailableRoles, getCurrentUser, getUserByEmail, getUserById, getUserByUsername, getUsers } from "../action";
 
 export const useGetUsersQuery = () => {
     return useQuery<IUserSchema[]>({
@@ -36,3 +36,11 @@ export const useGetCurrentUserQuery = () => {
         queryFn: () => getCurrentUser(),
     })
 }
+
+export const useGetUserRoleQuery = () => {
+    return useQuery({
+        queryKey: ["user"],
+        queryFn: () => getAvailableRoles(),
+    });
+}
+
