@@ -4,20 +4,51 @@ import {
     useGetCrimes,
     useGetCrimeIncidents,
     useGetIncidentLogs,
+    useCreateIncidentLog,
+    useCreateCrimeIncident,
+    useCreateCrimeSummary,
+    useUpdateCrimeIncidentStatus,
+    useVerifyIncidentLog,
+    useDeleteIncidentLog,
+    useDeleteCrimeIncident,
+    useDeleteCrimeSummary,
 } from "../_queries/queries";
 
 import { useState, useMemo } from "react";
 import { Card } from "@/app/_components/ui/card";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 // Import new components
 import { DataTable } from "@/app/_components/data-table";
 import { CrimeManagementToolbar } from "./toolbars/crime-management-toolbar";
 import { createCrimeColumns, createIncidentColumns, createIncidentLogColumns } from "./table/columns";
 import { useCrimeManagementHandlers, filterCrimes } from "../_handlers/use-crime-management";
-import { MoreHorizontal } from "lucide-react";
+import { CirclePlus, MoreHorizontal, Trash2, Pencil } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/_components/ui/dropdown-menu";
 import { Button } from "@/app/_components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/app/_components/ui/dialog";
+import {
+    CreateIncidentLogForm,
+    CreateCrimeIncidentForm,
+    CreateCrimeSummaryForm
+} from "./forms/incident-create-forms";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from "@/app/_components/ui/alert-dialog";
 
 // Helper: Quick Action column for tables
 function getQuickActionColumn(onUpdate: (row: any) => void, onDelete: (row: any) => void) {
@@ -32,10 +63,23 @@ function getQuickActionColumn(onUpdate: (row: any) => void, onDelete: (row: any)
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onUpdate(row.original)}>
+                    <DropdownMenuItem
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onUpdate(row.original);
+                        }}
+                    >
+                        <Pencil className="w-4 h-4 mr-2" />
                         Update
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onDelete(row.original)} className="text-destructive">
+                    <DropdownMenuItem
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(row.original);
+                        }}
+                        className="text-destructive"
+                    >
+                        <Trash2 className="w-4 h-4 mr-2" />
                         Delete
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -51,6 +95,13 @@ function getQuickActionColumn(onUpdate: (row: any) => void, onDelete: (row: any)
 export function IncidentLogsTable() {
     const router = useRouter();
     const { data: incidentLogs = [], isLoading, error } = useGetIncidentLogs();
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+
+    const createIncidentLogMutation = useCreateIncidentLog();
+    const verifyIncidentLogMutation = useVerifyIncidentLog();
+    const deleteIncidentLogMutation = useDeleteIncidentLog();
 
     // Use crime management handlers
     const {
@@ -63,10 +114,25 @@ export function IncidentLogsTable() {
     // Action handlers
     const handleUpdate = (row: any) => {
         router.push(`/dashboard/crime-management/crime-incident/${row.id}?type=incident-log&action=update`);
+        toast.info("Opening incident log for editing");
     };
+
     const handleDelete = (row: any) => {
-        // Implement delete logic or open confirmation dialog
-        alert(`Delete Incident Log: ${row.id}`);
+        setSelectedItem(row);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (selectedItem) {
+            try {
+                await deleteIncidentLogMutation.mutateAsync(selectedItem.id);
+                toast.success(`Incident log ${selectedItem.id.substring(0, 8)}... was deleted`);
+            } catch (err: any) {
+                toast.error(err?.message || "Failed to delete incident log");
+            }
+            setDeleteDialogOpen(false);
+            setSelectedItem(null);
+        }
     };
 
     // Add quick action column
@@ -103,6 +169,22 @@ export function IncidentLogsTable() {
         router.push(`/dashboard/crime-management/crime-incident/${log.id}?type=incident-log`);
     };
 
+    const handleCreateSubmit = async (formData: any) => {
+        try {
+            toast.promise(
+                createIncidentLogMutation.mutateAsync(formData),
+                {
+                    loading: 'Creating new incident log...',
+                    success: 'Incident log created successfully!',
+                    error: (err) => `Error: ${err.message || 'Failed to create incident log'}`
+                }
+            );
+            setIsCreateDialogOpen(false);
+        } catch (error) {
+            console.error("Error creating incident log:", error);
+        }
+    };
+
     if (error) return <div className="p-4 text-red-500">Error loading incident logs data</div>;
 
     return (
@@ -120,9 +202,10 @@ export function IncidentLogsTable() {
                 </div>
                 <Button
                     variant="default"
-                    onClick={() => router.push("/dashboard/crime-management/crime-incident/create?type=incident-log")}
+                    onClick={() => setIsCreateDialogOpen(true)}
                 >
-                    + Create
+                    <CirclePlus className="mr-2 h-4 w-4" />
+                    Create Incident Log
                 </Button>
             </div>
 
@@ -133,6 +216,47 @@ export function IncidentLogsTable() {
                 onRowClick={handleRowClick}
                 onCurrentPageDataCountChange={setCurrentPageDataCount}
             />
+
+            {/* Create Incident Log Dialog with improved width */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Create New Incident Log</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details to create a new incident log entry.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-2 flex items-center justify-center">
+                        <CreateIncidentLogForm
+                            onCancel={() => setIsCreateDialogOpen(false)}
+                            onSubmit={handleCreateSubmit}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete confirmation dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete the incident log.
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }
@@ -141,6 +265,11 @@ export function IncidentLogsTable() {
 export function CrimeIncidentsTable() {
     const router = useRouter();
     const { data: crimeIncidents = [], isLoading, error } = useGetCrimeIncidents();
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const createCrimeIncidentMutation = useCreateCrimeIncident();
+    const deleteCrimeIncidentMutation = useDeleteCrimeIncident();
 
     // Use crime management handlers
     const {
@@ -152,9 +281,23 @@ export function CrimeIncidentsTable() {
 
     const handleUpdate = (row: any) => {
         router.push(`/dashboard/crime-management/crime-incident/${row.id}?type=crime-incident&action=update`);
+        toast.info("Opening crime incident for editing");
     };
     const handleDelete = (row: any) => {
-        alert(`Delete Crime Incident: ${row.id}`);
+        setSelectedItem(row);
+        setDeleteDialogOpen(true);
+    };
+    const confirmDelete = async () => {
+        if (selectedItem) {
+            try {
+                await deleteCrimeIncidentMutation.mutateAsync(selectedItem.id);
+                toast.success(`Crime incident ${selectedItem.id.substring(0, 8)}... was deleted`);
+            } catch (err: any) {
+                toast.error(err?.message || "Failed to delete crime incident");
+            }
+            setDeleteDialogOpen(false);
+            setSelectedItem(null);
+        }
     };
 
     const columns = [
@@ -188,6 +331,11 @@ export function CrimeIncidentsTable() {
         router.push(`/dashboard/crime-management/crime-incident/${incident.id}?type=crime-incident`);
     };
 
+    const handleCreateSubmit = async (formData: any) => {
+        await createCrimeIncidentMutation.mutateAsync(formData);
+        setIsCreateDialogOpen(false);
+    };
+
     if (error) return <div className="p-4 text-red-500">Error loading crime incidents data</div>;
 
     return (
@@ -205,9 +353,10 @@ export function CrimeIncidentsTable() {
                 </div>
                 <Button
                     variant="default"
-                    onClick={() => router.push("/dashboard/crime-management/crime-incident/create?type=crime-incident")}
+                    onClick={() => setIsCreateDialogOpen(true)}
                 >
-                    + Create
+                    <CirclePlus className="mr-2 h-4 w-4" />
+                    Create Incident
                 </Button>
             </div>
 
@@ -218,6 +367,47 @@ export function CrimeIncidentsTable() {
                 onRowClick={handleRowClick}
                 onCurrentPageDataCountChange={setCurrentPageDataCount}
             />
+
+            {/* Create Crime Incident Dialog */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Create New Crime Incident</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details to create a new crime incident.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <CreateCrimeIncidentForm
+                            onCancel={() => setIsCreateDialogOpen(false)}
+                            onSubmit={handleCreateSubmit}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete confirmation dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete the crime incident.
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }
@@ -226,6 +416,11 @@ export function CrimeIncidentsTable() {
 export function CrimesTable() {
     const router = useRouter();
     const { data: crimes = [], isLoading, error } = useGetCrimes();
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const createCrimeSummaryMutation = useCreateCrimeSummary();
+    const deleteCrimeSummaryMutation = useDeleteCrimeSummary();
 
     // Use crime management handlers
     const {
@@ -242,9 +437,23 @@ export function CrimesTable() {
 
     const handleUpdate = (row: any) => {
         router.push(`/dashboard/crime-management/crime-incident/${row.id}?type=crime-summary&action=update`);
+        toast.info("Opening crime summary for editing");
     };
     const handleDelete = (row: any) => {
-        alert(`Delete Crime Summary: ${row.id}`);
+        setSelectedItem(row);
+        setDeleteDialogOpen(true);
+    };
+    const confirmDelete = async () => {
+        if (selectedItem) {
+            try {
+                await deleteCrimeSummaryMutation.mutateAsync(selectedItem.id);
+                toast.success(`Crime summary ${selectedItem.id.substring(0, 8)}... was deleted`);
+            } catch (err: any) {
+                toast.error(err?.message || "Failed to delete crime summary");
+            }
+            setDeleteDialogOpen(false);
+            setSelectedItem(null);
+        }
     };
 
     const columns = [
@@ -265,6 +474,11 @@ export function CrimesTable() {
         router.push(`/dashboard/crime-management/crime-incident/${crime.id}?type=crime-summary`);
     };
 
+    const handleCreateSubmit = async (formData: any) => {
+        await createCrimeSummaryMutation.mutateAsync(formData);
+        setIsCreateDialogOpen(false);
+    };
+
     if (error) return <div className="p-4 text-red-500">Error loading crimes data</div>;
 
     return (
@@ -282,9 +496,10 @@ export function CrimesTable() {
                 </div>
                 <Button
                     variant="default"
-                    onClick={() => router.push("/dashboard/crime-management/crime-incident/create?type=crime-summary")}
+                    onClick={() => setIsCreateDialogOpen(true)}
                 >
-                    + Create
+                    <CirclePlus className="mr-2 h-4 w-4" />
+                    Create
                 </Button>
             </div>
 
@@ -295,6 +510,47 @@ export function CrimesTable() {
                 onRowClick={handleRowClick}
                 onCurrentPageDataCountChange={setCurrentPageDataCount}
             />
+
+            {/* Create Crime Summary Dialog */}
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogContent className="max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Create New Crime Summary</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details to create a new crime statistics summary.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <CreateCrimeSummaryForm
+                            onCancel={() => setIsCreateDialogOpen(false)}
+                            onSubmit={handleCreateSubmit}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete confirmation dialog */}
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete the crime summary.
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }

@@ -278,7 +278,7 @@ Example response:
 }
 
 Environment Variables Required:
-- AWS_ACCESS_KEY_ID
+- AWS_RK_ACCESS_KEY_ID
 - AWS_SECRET_ACCESS_KEY  
-- AWS_REGION (optional, defaults to us-east-1)
+- AWS_RK_REGION (optional, defaults to us-east-1)
 */

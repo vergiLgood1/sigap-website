@@ -858,14 +858,14 @@ export async function getLastIdCounter(
   orderByField: string = 'id'
 ): Promise<number> {
   try {
-    // Dynamic query to get the last record from the specified table
+    // Use MAX() function for better performance
     const result = await db.$queryRawUnsafe(
-      `SELECT ${orderByField} FROM "${tableName}" ORDER BY "${orderByField}" DESC LIMIT 1`
+      `SELECT MAX("${orderByField}") as max_id FROM "${tableName}"`
     );
 
     // Extract the ID from the result
     if (result && Array.isArray(result) && result.length > 0) {
-      const lastId = result[0][orderByField];
+      const lastId = result[0].max_id;
       if (lastId) {
         return extractCounterFromId(lastId, counterPattern);
       }
@@ -879,7 +879,7 @@ export async function getLastIdCounter(
 }
 
 /**
- * Generate an ID with counter continuation from database
+ * Generate an ID with counter continuation from database with robust duplication prevention
  * @param tableName Prisma table name to check for last ID
  * @param options ID generation options
  * @param counterPattern RegExp pattern to extract counter (with capture group)
@@ -904,53 +904,55 @@ export async function generateIdWithDbCounter(
     uniquenessStrategy?: 'counter';
     retryOnCollision?: boolean;
     maxRetries?: number;
+    useUuid?: boolean; // Option to force UUID generation
+    uuidFormat?: 'standard' | 'short' | 'prefix-short' | 'no-dashes'; // UUID format options
+    uuidLength?: number; // Control length when using short formats
   } = {},
   counterPattern: RegExp = /(\d+)$/
 ): Promise<string> {
-  // Override uniquenessStrategy to ensure we use counter
-  options.uniquenessStrategy = 'counter';
-  // Initialize the counter registry if it doesn't exist
-  if (!globalThis.__idCounterRegistry) {
-    globalThis.__idCounterRegistry = {} as Record<string, number>;
+  // Check if we should use UUID instead of sequential ID
+  if (options.useUuid) {
+    const uuid = crypto.randomUUID();
+
+    // Format the UUID based on the specified format
+    switch (options.uuidFormat) {
+      case 'standard':
+        return uuid; // Standard UUID: 36 chars with dashes
+
+      case 'short':
+        // Return a shorter version of the UUID with specified length or 12 chars by default
+        return uuid.replace(/-/g, '').substring(0, options.uuidLength || 12);
+
+      case 'prefix-short':
+        // Prefix + shortened UUID (useful for readable but unique IDs)
+        const shortId = uuid.replace(/-/g, '').substring(0, options.uuidLength || 8);
+        const prefix = options.prefix || tableName.substring(0, 2).toUpperCase();
+        return `${prefix}-${shortId}`;
+
+      case 'no-dashes':
+        // UUID without dashes: 32 chars
+        return uuid.replace(/-/g, '');
+
+      default:
+        return uuid;
+    }
   }
-  
 
   // Get the last counter from the database
-  let lastCounter;
-  if (tableName === 'units') {
-    lastCounter = await getLastIdCounter(
-      tableName,
-      counterPattern,
-      'code_unit'
-    );
-  } else {
-    lastCounter = await getLastIdCounter(tableName, counterPattern);
-  }
-
-  // Initialize or update the counter for this specific prefix
-  if (globalThis.__idCounterRegistry[tableName] === undefined) {
-    globalThis.__idCounterRegistry[tableName] = lastCounter;
-  } else {
-    // Ensure the counter is at least as large as the last DB counter
-    globalThis.__idCounterRegistry[tableName] = Math.max(
-      globalThis.__idCounterRegistry[tableName],
-      lastCounter
-    );
-  }
-
-  // Store the prefix-specific counter value
-  const currentCounter = globalThis.__idCounterRegistry[tableName];
+  const lastCounter = await getLastIdCounter(tableName, counterPattern);
   
-  // Set the global counter to this prefix's counter for the generateId function
-  globalThis.__idCounter = currentCounter;
+  // Configure ID generation options to use the counter strategy with the last counter + 1
+  const idOptions = {
+    ...options,
+    uniquenessStrategy: 'counter' as const,
+    randomSequence: false
+  };
   
-  // Generate the ID using the existing function
-  const generatedId = generateId(options);
+  // Update global counter to start from the last DB counter
+  globalThis.__idCounter = Math.max(globalThis.__idCounter || 0, lastCounter);
   
-  // Update the prefix's counter after generation
-  globalThis.__idCounterRegistry[tableName] = globalThis.__idCounter;
-  
-  return generatedId;
+  // Generate the ID using the standard function
+  return generateId(idOptions);
 }
 
 export function generateId(

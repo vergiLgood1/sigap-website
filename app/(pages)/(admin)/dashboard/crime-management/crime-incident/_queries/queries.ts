@@ -6,7 +6,15 @@ import {
     getIncidentLogById,
     getCrimeIncidentById,
     verifyIncidentLog,
-    updateCrimeIncidentStatus
+    updateCrimeIncidentStatus,
+    getDistricts,
+    getAvailableSourceTypes,
+    createIncidentLog,
+    createCrimeIncident,
+    createCrimeSummary,
+    deleteIncidentLog,
+    deleteCrimeIncident,
+    deleteCrimeSummary,
 } from "../action";
 
 // Fetch all incident logs
@@ -110,5 +118,108 @@ export function useUpdateCrimeIncidentStatus() {
             queryClient.invalidateQueries({ queryKey: ["crimeIncidents"] });
             queryClient.invalidateQueries({ queryKey: ["crimeIncidentDetail", variables.id] });
         }
+    });
+}
+
+
+// Get all districts
+export function useGetDistricts() {
+    return useQuery({
+        queryKey: ["districts"],
+        queryFn: () => getDistricts(),
+    });
+}
+
+// Get available source types
+export function useGetSourceTypes() {
+    return useQuery({
+        queryKey: ["sourceTypes"],
+        queryFn: () => getAvailableSourceTypes(),
+    });
+}
+
+// Create Incident Log
+export function useCreateIncidentLog() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: any) => createIncidentLog(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["incidentLogs"] });
+        },
+    });
+}
+
+// Create Crime Incident
+export function useCreateCrimeIncident() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: any) => createCrimeIncident(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["crimeIncidents"] });
+        },
+    });
+}
+
+// Create Crime Summary
+export function useCreateCrimeSummary() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (data: any) => createCrimeSummary(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["crimes"] });
+        },
+    });
+}
+
+// DELETE HOOKS
+export function useDeleteIncidentLog() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            return await deleteIncidentLog(id);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['incident-logs'] });
+            queryClient.invalidateQueries({ queryKey: ['crime-incidents'] });
+            queryClient.invalidateQueries({ queryKey: ['crimes'] });
+        },
+        onError: (error) => {
+            console.error('Error deleting incident log:', error);
+        },
+    });
+}
+
+export function useDeleteCrimeIncident() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            return await deleteCrimeIncident(id);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['crime-incidents'] });
+            queryClient.invalidateQueries({ queryKey: ['crimes'] });
+        },
+        onError: (error) => {
+            console.error('Error deleting crime incident:', error);
+        },
+    });
+}
+
+export function useDeleteCrimeSummary() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (id: string) => {
+            return await deleteCrimeSummary(id);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['crimes'] });
+            queryClient.invalidateQueries({ queryKey: ['crime-incidents'] });
+        },
+        onError: (error) => {
+            console.error('Error deleting crime summary:', error);
+        },
     });
 }

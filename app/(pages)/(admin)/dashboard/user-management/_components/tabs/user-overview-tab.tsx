@@ -20,11 +20,12 @@ import { AuthenticationError } from "@/src/entities/errors/auth";
 import { useCheckPermissionsHandler } from "@/app/(pages)/(auth)/_handlers/use-check-permissions";
 import { useCallback } from "react";
 import { cn } from "@/app/_lib/utils";
-import { Section } from "@/app/_components/Section";
+
 import { InfoRow } from "@/app/_components/info-row";
 import { ProviderInfo } from "@/app/_components/provider-info";
 import { ActionRow } from "@/app/_components/action-row";
 import { DangerAction } from "@/app/_components/danger-action";
+import { Section } from "@/app/_components/section";
 
 
 interface UserOverviewTabProps {

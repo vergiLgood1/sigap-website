@@ -1,8 +1,8 @@
 import { Badge } from "@/app/_components/ui/badge"
 import { Shield, Users } from "lucide-react"
 
-export default function SpecializedUnits() {
-  const units = [
+export default function SpecializedUnits({ units: propUnits }: { units?: any[] }) {
+  const units = propUnits || [
     {
       name: "SWAT",
       members: 8,

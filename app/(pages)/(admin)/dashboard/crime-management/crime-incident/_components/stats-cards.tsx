@@ -1,6 +1,8 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/_components/ui/card";
+import { Skeleton } from "@/app/_components/ui/skeleton";
+
 import {
     AlertCircle,
     CheckCircle,
@@ -23,6 +25,7 @@ import {
     Tooltip
 } from "recharts";
 import { useMemo } from "react";
+import { toast } from "sonner";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -78,8 +81,17 @@ const groupByMonth = (data: any[], timestampField: string) => {
     return result.slice(startIndex, startIndex + 6);
 };
 
+// Chart loading placeholder component
+function ChartSkeleton() {
+    return (
+        <div className="h-16 w-32">
+            <Skeleton className="h-full w-full" />
+        </div>
+    );
+}
+
 // Incident Logs Stats Component
-export function IncidentLogsStats({ incidentLogs = [] }: { incidentLogs: any[] }) {
+export function IncidentLogsStats({ incidentLogs = [], isLoading = false }: { incidentLogs: any[], isLoading?: boolean }) {
     // Calculate stats from actual data
     const totalIncidents = incidentLogs.length;
     const verifiedIncidents = incidentLogs.filter(log => log.verified).length;
@@ -106,28 +118,39 @@ export function IncidentLogsStats({ incidentLogs = [] }: { incidentLogs: any[] }
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <p className="text-2xl font-bold">{totalIncidents}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {incidentsByMonth.length > 0 && `${incidentsByMonth[incidentsByMonth.length - 1].count} this month`}
-                            </p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-24" />
+                                </>
+                            ) : (
+                                <>
+                                        <p className="text-2xl font-bold">{totalIncidents}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {incidentsByMonth.length > 0 && `${incidentsByMonth[incidentsByMonth.length - 1].count} this month`}
+                                        </p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={incidentsByMonth}>
-                                    <Tooltip
-                                        labelFormatter={(value) => `Month: ${value}`}
-                                        formatter={(value) => [`Reports: ${value}`]}
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="count"
-                                        stroke="#8884d8"
-                                        strokeWidth={2}
-                                        dot={false}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={incidentsByMonth}>
+                                        <Tooltip
+                                            labelFormatter={(value) => `Month: ${value}`}
+                                            formatter={(value) => [`Reports: ${value}`]}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="count"
+                                            stroke="#8884d8"
+                                            strokeWidth={2}
+                                            dot={false}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -140,44 +163,64 @@ export function IncidentLogsStats({ incidentLogs = [] }: { incidentLogs: any[] }
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <div className="flex gap-2">
-                                <div>
-                                    <p className="text-2xl font-bold text-emerald-600">{verifiedIncidents}</p>
-                                    <p className="text-xs text-emerald-600">Verified</p>
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-amber-600">{pendingVerification}</p>
-                                    <p className="text-xs text-amber-600">Pending</p>
-                                </div>
+                            {isLoading ? (
+                                <>
+                                    <div className="flex gap-2">
+                                        <div>
+                                            <Skeleton className="h-8 w-16" />
+                                            <Skeleton className="h-4 w-12 mt-1" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-8 w-16" />
+                                            <Skeleton className="h-4 w-12 mt-1" />
+                                        </div>
+                                    </div>
+                                    <Skeleton className="h-4 w-32 mt-1" />
+                                </>
+                            ) : (
+                                <>
+                                        <div className="flex gap-2">
+                                            <div>
+                                                <p className="text-2xl font-bold text-emerald-600">{verifiedIncidents}</p>
+                                                <p className="text-xs text-emerald-600">Verified</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-bold text-amber-600">{pendingVerification}</p>
+                                                <p className="text-xs text-amber-600">Pending</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-emerald-500">
+                                            <span className="inline-flex items-center">
+                                                {verificationRate > 0 ? <TrendingUp className="mr-1 h-3 w-3" /> : <TrendingDown className="mr-1 h-3 w-3" />}
+                                                {verificationRate}% verification rate
+                                            </span>
+                                        </p>
+                                </>
+                            )}
+                        </div>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-16">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={[
+                                                { name: "Verified", value: verifiedIncidents || 1 },
+                                                { name: "Pending", value: pendingVerification || 1 },
+                                            ]}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={15}
+                                            outerRadius={30}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                        >
+                                            <Cell fill="#10b981" />
+                                            <Cell fill="#f59e0b" />
+                                        </Pie>
+                                    </PieChart>
+                                </ResponsiveContainer>
                             </div>
-                            <p className="text-xs text-emerald-500">
-                                <span className="inline-flex items-center">
-                                    {verificationRate > 0 ? <TrendingUp className="mr-1 h-3 w-3" /> : <TrendingDown className="mr-1 h-3 w-3" />}
-                                    {verificationRate}% verification rate
-                                </span>
-                            </p>
-                        </div>
-                        <div className="h-16 w-16">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={[
-                                            { name: "Verified", value: verifiedIncidents || 1 },
-                                            { name: "Pending", value: pendingVerification || 1 },
-                                        ]}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={15}
-                                        outerRadius={30}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                    >
-                                        <Cell fill="#10b981" />
-                                        <Cell fill="#f59e0b" />
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -190,33 +233,52 @@ export function IncidentLogsStats({ incidentLogs = [] }: { incidentLogs: any[] }
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-2">
-                            <p className="text-2xl font-bold">{incidentsBySource.length}</p>
-                            <p className="text-xs text-muted-foreground">Different sources</p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-24" />
+                                </>
+                            ) : (
+                                <>
+                                        <p className="text-2xl font-bold">{incidentsBySource.length}</p>
+                                        <p className="text-xs text-muted-foreground">Different sources</p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={incidentsBySource}>
-                                    <Tooltip
-                                        formatter={(value) => [`${value} incidents`]}
-                                        labelFormatter={(name) => `Source: ${name}`}
-                                    />
-                                    <Bar dataKey="value" fill="#0ea5e9">
-                                        {incidentsBySource.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div className="mt-4 text-xs space-y-1">
-                        {incidentsBySource.slice(0, 2).map((source, i) => (
-                            <div key={i} className="flex justify-between">
-                                <span>{source.name}</span>
-                                <span>{source.value} reports</span>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={incidentsBySource}>
+                                        <Tooltip
+                                            formatter={(value) => [`${value} incidents`]}
+                                            labelFormatter={(name) => `Source: ${name}`}
+                                        />
+                                        <Bar dataKey="value" fill="#0ea5e9">
+                                            {incidentsBySource.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
-                        ))}
+                        )}
                     </div>
+                    {!isLoading && (
+                        <div className="mt-4 text-xs space-y-1">
+                            {incidentsBySource.slice(0, 2).map((source, i) => (
+                                <div key={i} className="flex justify-between">
+                                    <span>{source.name}</span>
+                                    <span>{source.value} reports</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {isLoading && (
+                        <div className="mt-4 text-xs space-y-1">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
@@ -224,7 +286,7 @@ export function IncidentLogsStats({ incidentLogs = [] }: { incidentLogs: any[] }
 }
 
 // Crime Incidents Stats Component
-export function CrimeIncidentsStats({ crimeIncidents = [] }: { crimeIncidents: any[] }) {
+export function CrimeIncidentsStats({ crimeIncidents = [], isLoading = false }: { crimeIncidents: any[], isLoading?: boolean }) {
     const totalCases = crimeIncidents.length;
 
     // Group by status
@@ -262,37 +324,48 @@ export function CrimeIncidentsStats({ crimeIncidents = [] }: { crimeIncidents: a
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <p className="text-2xl font-bold">{totalCases}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {statuses.resolved} resolved • {statuses.open} open • {statuses.underInvestigation} investigating
-                            </p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-40" />
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-2xl font-bold">{totalCases.toLocaleString()}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {statuses.resolved} resolved • {statuses.open} open • {statuses.underInvestigation} investigating
+                                    </p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Tooltip
-                                        formatter={(value, name) => [`${value} cases`, name]}
-                                    />
-                                    <Pie
-                                        data={[
-                                            { name: "Open", value: statuses.open || 0 },
-                                            { name: "Investigating", value: statuses.underInvestigation || 0 },
-                                            { name: "Resolved", value: statuses.resolved || 0 },
-                                        ]}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={15}
-                                        outerRadius={30}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                    >
-                                        <Cell fill="#f59e0b" /> {/* Open - amber */}
-                                        <Cell fill="#3b82f6" /> {/* Investigating - blue */}
-                                        <Cell fill="#10b981" /> {/* Resolved - green */}
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Tooltip
+                                            formatter={(value, name) => [`${value} cases`, name]}
+                                        />
+                                        <Pie
+                                            data={[
+                                                { name: "Open", value: statuses.open || 0 },
+                                                { name: "Investigating", value: statuses.underInvestigation || 0 },
+                                                { name: "Resolved", value: statuses.resolved || 0 },
+                                            ]}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={15}
+                                            outerRadius={30}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                        >
+                                            <Cell fill="#f59e0b" /> {/* Open - amber */}
+                                            <Cell fill="#3b82f6" /> {/* Investigating - blue */}
+                                            <Cell fill="#10b981" /> {/* Resolved - green */}
+                                        </Pie>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -305,37 +378,57 @@ export function CrimeIncidentsStats({ crimeIncidents = [] }: { crimeIncidents: a
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <p className="text-2xl font-bold">{incidentsByCategory.length}</p>
-                            <p className="text-xs text-sky-500">
-                                <span className="inline-flex items-center">
-                                    Different crime types
-                                </span>
-                            </p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-32" />
+                                </>
+                            ) : (
+                                <>
+                                        <p className="text-2xl font-bold">{incidentsByCategory.length}</p>
+                                        <p className="text-xs text-sky-500">
+                                            <span className="inline-flex items-center">
+                                                Different crime types
+                                            </span>
+                                        </p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={incidentsByCategory}>
-                                    <Tooltip
-                                        formatter={(value) => [`${value} cases`]}
-                                        labelFormatter={(name) => `${name}`}
-                                    />
-                                    <Bar dataKey="value" fill="#3b82f6">
-                                        {incidentsByCategory.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div className="mt-4 text-xs space-y-1">
-                        {incidentsByCategory.slice(0, 3).map((category, i) => (
-                            <div key={i} className="flex justify-between">
-                                <span>{category.name}</span>
-                                <span>{category.value} cases</span>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={incidentsByCategory}>
+                                        <Tooltip
+                                            formatter={(value) => [`${value} cases`]}
+                                            labelFormatter={(name) => `${name}`}
+                                        />
+                                        <Bar dataKey="value" fill="#3b82f6">
+                                            {incidentsByCategory.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
-                        ))}
+                        )}
                     </div>
+                    {!isLoading && (
+                        <div className="mt-4 text-xs space-y-1">
+                            {incidentsByCategory.slice(0, 3).map((category, i) => (
+                                <div key={i} className="flex justify-between">
+                                    <span>{category.name}</span>
+                                    <span>{category.value} cases</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {isLoading && (
+                        <div className="mt-4 text-xs space-y-1">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -347,29 +440,47 @@ export function CrimeIncidentsStats({ crimeIncidents = [] }: { crimeIncidents: a
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <p className="text-2xl font-bold">{resolutionRate}%</p>
-                            <p className="text-xs text-emerald-500">
-                                <span className="inline-flex items-center">
-                                    <TrendingUp className="mr-1 h-3 w-3" />
-                                    Resolution rate
-                                </span>
-                            </p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-32" />
+                                </>
+                            ) : (
+                                <>
+                                        <p className="text-2xl font-bold">{resolutionRate}%</p>
+                                        <p className="text-xs text-emerald-500">
+                                            <span className="inline-flex items-center">
+                                                <TrendingUp className="mr-1 h-3 w-3" />
+                                                Resolution rate
+                                            </span>
+                                        </p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32">
-                            <div className="w-full h-full flex items-end gap-1">
-                                {incidentsByDistrict.slice(0, 6).map((district, i) => (
-                                    <div
-                                        key={i}
-                                        className={`w-1/6 rounded-sm ${i < 3 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                                        style={{ height: `${Math.min(100, (district.value / Math.max(...incidentsByDistrict.map(d => d.value))) * 100)}%` }}
-                                    ></div>
-                                ))}
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32">
+                                <div className="w-full h-full flex items-end gap-1">
+                                    {incidentsByDistrict.slice(0, 6).map((district, i) => (
+                                        <div
+                                            key={i}
+                                            className={`w-1/6 rounded-sm ${i < 3 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                            style={{ height: `${Math.min(100, (district.value / Math.max(...incidentsByDistrict.map(d => d.value))) * 100)}%` }}
+                                        ></div>
+                                    ))}
+                                </div>
                             </div>
+                        )}
+                    </div>
+                    {!isLoading && (
+                        <div className="mt-4 text-xs text-muted-foreground">
+                            Top districts: {incidentsByDistrict.slice(0, 2).map(d => d.name).join(', ')}
                         </div>
-                    </div>
-                    <div className="mt-4 text-xs text-muted-foreground">
-                        Top districts: {incidentsByDistrict.slice(0, 2).map(d => d.name).join(', ')}
-                    </div>
+                    )}
+                    {isLoading && (
+                        <div className="mt-4">
+                            <Skeleton className="h-4 w-3/4" />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
@@ -377,7 +488,7 @@ export function CrimeIncidentsStats({ crimeIncidents = [] }: { crimeIncidents: a
 }
 
 // Crime Summary Stats Component
-export function CrimesSummaryStats({ crimes = [] }: { crimes: any[] }) {
+export function CrimesSummaryStats({ crimes = [], isLoading = false }: { crimes: any[], isLoading?: boolean }) {
     // Fix calculation of crime statistics to avoid duplication
 
     // For total reported crimes, just use the count of entries in the crimes array
@@ -444,34 +555,52 @@ export function CrimesSummaryStats({ crimes = [] }: { crimes: any[] }) {
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <p className="text-2xl font-bold">{totalCrimesReported.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Crime records in database</p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-32" />
+                                </>
+                            ) : (
+                                <>
+                                        <p className="text-2xl font-bold">{totalCrimesReported.toLocaleString()}</p>
+                                        <p className="text-xs text-muted-foreground">Crime records in database</p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={crimesByDistrictArray}>
-                                    <Tooltip
-                                        formatter={(value) => [`${parseInt(value as string).toLocaleString()} crimes`]
-                                        }
-                                        labelFormatter={(value) => `District: ${value}`}
-                                    />
-                                    <Bar dataKey="count" fill="#8884d8">
-                                        {crimesByDistrictArray.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div className="mt-4 text-xs space-y-1">
-                        {crimesByDistrictArray.slice(0, 2).map((district, i) => (
-                            <div key={i} className="flex justify-between">
-                                <span>{district.name}</span>
-                                <span>{district.count.toLocaleString()} crimes</span>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={crimesByDistrictArray}>
+                                        <Tooltip
+                                            formatter={(value) => [`${parseInt(value as string).toLocaleString()} crimes`]}
+                                            labelFormatter={(value) => `District: ${value}`}
+                                        />
+                                        <Bar dataKey="count" fill="#8884d8">
+                                            {crimesByDistrictArray.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
-                        ))}
+                        )}
                     </div>
+                    {!isLoading && (
+                        <div className="mt-4 text-xs space-y-1">
+                            {crimesByDistrictArray.slice(0, 2).map((district, i) => (
+                                <div key={i} className="flex justify-between">
+                                    <span>{district.name}</span>
+                                    <span>{district.count.toLocaleString()} crimes</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {isLoading && (
+                        <div className="mt-4 text-xs space-y-1">
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full" />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -483,39 +612,50 @@ export function CrimesSummaryStats({ crimes = [] }: { crimes: any[] }) {
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <p className="text-2xl font-bold">{crimesCleared.toLocaleString()}</p>
-                            <p className="text-xs text-emerald-500">
-                                <span className="inline-flex items-center">
-                                    <TrendingUp className="mr-1 h-3 w-3" />
-                                    {clearanceRate}% clearance rate
-                                </span>
-                            </p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-32" />
+                                </>
+                            ) : (
+                                <>
+                                        <p className="text-2xl font-bold">{crimesCleared.toLocaleString()}</p>
+                                        <p className="text-xs text-emerald-500">
+                                            <span className="inline-flex items-center">
+                                                <TrendingUp className="mr-1 h-3 w-3" />
+                                                {clearanceRate}% clearance rate
+                                            </span>
+                                        </p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Tooltip
-                                        formatter={(value) => [`${parseInt(value as string).toLocaleString()} crimes`, '']}
-                                    />
-                                    <Pie
-                                        data={[
-                                            { name: "Cleared", value: crimesCleared || 1 },
-                                            { name: "Uncleared", value: totalCrimesReported - crimesCleared || 1 },
-                                        ]}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={15}
-                                        outerRadius={30}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                        nameKey="name"
-                                    >
-                                        <Cell fill="#10b981" />
-                                        <Cell fill="#d1d5db" />
-                                    </Pie>
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Tooltip
+                                            formatter={(value) => [`${parseInt(value as string).toLocaleString()} crimes`, '']}
+                                        />
+                                        <Pie
+                                            data={[
+                                                { name: "Cleared", value: crimesCleared || 1 },
+                                                { name: "Uncleared", value: totalCrimesReported - crimesCleared || 1 },
+                                            ]}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={15}
+                                            outerRadius={30}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                            nameKey="name"
+                                        >
+                                            <Cell fill="#10b981" />
+                                            <Cell fill="#d1d5db" />
+                                        </Pie>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -528,39 +668,117 @@ export function CrimesSummaryStats({ crimes = [] }: { crimes: any[] }) {
                 <CardContent>
                     <div className="flex justify-between items-center">
                         <div className="space-y-1">
-                            <p className="text-2xl font-bold">{highRiskDistricts}</p>
-                            <p className="text-xs text-red-500">
-                                <span className="inline-flex items-center">
-                                    <AlertCircle className="mr-1 h-3 w-3" />
-                                    High risk areas
-                                </span>
-                            </p>
+                            {isLoading ? (
+                                <>
+                                    <Skeleton className="h-8 w-16" />
+                                    <Skeleton className="h-4 w-32" />
+                                </>
+                            ) : (
+                                <>
+                                        <p className="text-2xl font-bold">{highRiskDistricts}</p>
+                                        <p className="text-xs text-red-500">
+                                            <span className="inline-flex items-center">
+                                                <AlertCircle className="mr-1 h-3 w-3" />
+                                                High risk areas
+                                            </span>
+                                        </p>
+                                </>
+                            )}
                         </div>
-                        <div className="h-16 w-32 flex justify-center items-end">
-                            <div className="flex items-end gap-2 h-full">
-                                <div title="Critical" className="bg-red-500 rounded-sm w-5"
-                                    style={{ height: `${Math.max(10, (riskLevels.critical / Math.max(1, crimes.length)) * 100)}%` }}>
-                                </div>
-                                <div title="High" className="bg-orange-500 rounded-sm w-5"
-                                    style={{ height: `${Math.max(10, (riskLevels.high / Math.max(1, crimes.length)) * 100)}%` }}>
-                                </div>
-                                <div title="Medium" className="bg-yellow-500 rounded-sm w-5"
-                                    style={{ height: `${Math.max(10, (riskLevels.medium / Math.max(1, crimes.length)) * 100)}%` }}>
-                                </div>
-                                <div title="Low" className="bg-green-500 rounded-sm w-5"
-                                    style={{ height: `${Math.max(10, (riskLevels.low / Math.max(1, crimes.length)) * 100)}%` }}>
+                        {isLoading ? <ChartSkeleton /> : (
+                            <div className="h-16 w-32 flex justify-center items-end">
+                                <div className="flex items-end gap-2 h-full">
+                                    <div title="Critical" className="bg-red-500 rounded-sm w-5"
+                                        style={{ height: `${Math.max(10, (riskLevels.critical / Math.max(1, crimes.length)) * 100)}%` }}>
+                                    </div>
+                                    <div title="High" className="bg-orange-500 rounded-sm w-5"
+                                        style={{ height: `${Math.max(10, (riskLevels.high / Math.max(1, crimes.length)) * 100)}%` }}>
+                                    </div>
+                                    <div title="Medium" className="bg-yellow-500 rounded-sm w-5"
+                                        style={{ height: `${Math.max(10, (riskLevels.medium / Math.max(1, crimes.length)) * 100)}%` }}>
+                                    </div>
+                                    <div title="Low" className="bg-green-500 rounded-sm w-5"
+                                        style={{ height: `${Math.max(10, (riskLevels.low / Math.max(1, crimes.length)) * 100)}%` }}>
+                                    </div>
                                 </div>
                             </div>
+                        )}
+                    </div>
+                    {!isLoading && (
+                        <div className="mt-4 text-xs grid grid-cols-4 gap-1">
+                            <div className="text-center text-red-500">Critical<br />{riskLevels.critical}</div>
+                            <div className="text-center text-orange-500">High<br />{riskLevels.high}</div>
+                            <div className="text-center text-yellow-500">Medium<br />{riskLevels.medium}</div>
+                            <div className="text-center text-green-500">Low<br />{riskLevels.low}</div>
                         </div>
-                    </div>
-                    <div className="mt-4 text-xs grid grid-cols-4 gap-1">
-                        <div className="text-center text-red-500">Critical<br />{riskLevels.critical}</div>
-                        <div className="text-center text-orange-500">High<br />{riskLevels.high}</div>
-                        <div className="text-center text-yellow-500">Medium<br />{riskLevels.medium}</div>
-                        <div className="text-center text-green-500">Low<br />{riskLevels.low}</div>
-                    </div>
+                    )}
+                    {isLoading && (
+                        <div className="mt-4 text-xs grid grid-cols-4 gap-1">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="text-center">
+                                    <Skeleton className="h-4 w-full mb-1" />
+                                    <Skeleton className="h-4 w-full" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
     );
 }
+
+// Export toast notification helper for CRUD operations
+export const showToastOnCRUD = {
+    create: (entityType: string = "Record") => {
+        toast.success(`${entityType} created successfully`);
+    },
+    update: (entityType: string = "Record") => {
+        toast.success(`${entityType} updated successfully`);
+    },
+    delete: (entityType: string = "Record") => {
+        toast.success(`${entityType} deleted successfully`);
+    },
+    bulkDelete: (entityType: string = "Records", count: number) => {
+        toast.success(`${count} ${entityType.toLowerCase()} deleted successfully`);
+    },
+    verify: (entityType: string = "Record") => {
+        toast.success(`${entityType} verified successfully`);
+    },
+    error: (error: any, action: string = "operation") => {
+        const message = error?.message || `An error occurred during ${action}`;
+        toast.error(message);
+    },
+    warning: (message: string) => {
+        toast.warning(message);
+    },
+    info: (message: string) => {
+        toast.info(message);
+    }
+};
+
+// Specific CRUD helpers for each entity type
+export const crimeIncidentToast = {
+    created: () => showToastOnCRUD.create("Crime Incident"),
+    updated: () => showToastOnCRUD.update("Crime Incident"),
+    deleted: () => showToastOnCRUD.delete("Crime Incident"),
+    bulkDeleted: (count: number) => showToastOnCRUD.bulkDelete("Crime Incidents", count),
+    statusUpdated: () => toast.success("Crime incident status updated successfully"),
+    error: (error: any) => showToastOnCRUD.error(error, "crime incident operation"),
+};
+
+export const incidentLogToast = {
+    created: () => showToastOnCRUD.create("Incident Log"),
+    updated: () => showToastOnCRUD.update("Incident Log"),
+    deleted: () => showToastOnCRUD.delete("Incident Log"),
+    bulkDeleted: (count: number) => showToastOnCRUD.bulkDelete("Incident Logs", count),
+    verified: () => showToastOnCRUD.verify("Incident Log"),
+    error: (error: any) => showToastOnCRUD.error(error, "incident log operation"),
+};
+
+export const crimeSummaryToast = {
+    created: () => showToastOnCRUD.create("Crime Summary"),
+    updated: () => showToastOnCRUD.update("Crime Summary"),
+    deleted: () => showToastOnCRUD.delete("Crime Summary"),
+    error: (error: any) => showToastOnCRUD.error(error, "crime summary operation"),
+};

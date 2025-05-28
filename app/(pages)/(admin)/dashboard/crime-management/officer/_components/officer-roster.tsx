@@ -2,8 +2,9 @@ import { User, Shield, Phone } from "lucide-react"
 import { Badge } from "@/app/_components/ui/badge"
 import { Button } from "@/app/_components/ui/button"
 
-export default function OfficerRoster() {
-  const officers = [
+export default function OfficerRoster({ officers: propOfficers }: { officers?: any[] }) {
+  // Use prop officers if provided, otherwise use default data
+  const officers = propOfficers || [
     {
       id: "OFF-1234",
       name: "Michael Chen",

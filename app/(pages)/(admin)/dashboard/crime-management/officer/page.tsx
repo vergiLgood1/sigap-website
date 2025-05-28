@@ -11,6 +11,7 @@ import EquipmentAssignments from "./_components/equipment-assignments"
 import IncidentReports from "./_components/incident-reports"
 import LeaveManagement from "./_components/leave-management"
 import SpecializedUnits from "./_components/specialized-units"
+import OfficerTable from "./_components/officer-table"
 
 export default function OfficerManagementPage() {
     return (
@@ -86,6 +87,11 @@ export default function OfficerManagementPage() {
                         <SpecializedUnits />
                     </BentoGridItem>
                 </BentoGrid>
+
+                {/* Officer Table with Charts and Statistics */}
+                <div className="mt-8">
+                    <OfficerTable />
+                </div>
             </div>
         </div>
     )

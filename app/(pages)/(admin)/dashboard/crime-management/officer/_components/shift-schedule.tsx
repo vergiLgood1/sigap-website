@@ -9,7 +9,7 @@ export default function ShiftSchedule() {
   ]
 
   // Sample schedule data
-  const schedule = {
+  const schedule: Record<string, (number | null)[]> = {
     "OFF-1234": [0, 0, 0, 0, 0, null, null], // Day shift Mon-Fri
     "OFF-2345": [0, 0, 0, 0, 0, null, null], // Day shift Mon-Fri
     "OFF-3456": [0, 0, 0, 0, 0, null, null], // Day shift Mon-Fri
@@ -56,7 +56,7 @@ export default function ShiftSchedule() {
             <div className="p-2 text-sm border-r truncate">{officer.name}</div>
             {days.map((day, dayIndex) => {
               const shiftIndex = schedule[officer.id]?.[dayIndex]
-              const shift = shifts[shiftIndex]
+              const shift = shiftIndex !== null ? shifts[shiftIndex] : null
 
               return (
                 <div key={`${officer.id}-${day}`} className="p-2 text-xs text-center">

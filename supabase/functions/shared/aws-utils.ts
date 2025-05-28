@@ -16,13 +16,13 @@ export interface ValidationResult {
  * Validate AWS credentials from environment variables
  */
 export function validateAWSCredentials(): { credentials?: AWSCredentials; error?: string } {
-  const region = Deno.env.get('AWS_REGION');
-  const accessKey = Deno.env.get('AWS_ACCESS_KEY_ID');
+  const region = Deno.env.get('AWS_RK_REGION');
+  const accessKey = Deno.env.get('AWS_RK_ACCESS_KEY_ID');
   const secretKey = Deno.env.get('AWS_SECRET_ACCESS_KEY');
 
   const requiredEnvVars = [
-    { name: 'AWS_REGION', value: region },
-    { name: 'AWS_ACCESS_KEY_ID', value: accessKey },
+    { name: 'AWS_RK_REGION', value: region },
+    { name: 'AWS_RK_ACCESS_KEY_ID', value: accessKey },
     { name: 'AWS_SECRET_ACCESS_KEY', value: secretKey }
   ];
 

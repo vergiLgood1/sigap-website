@@ -217,3 +217,40 @@ export function DateTimePicker2({
         </Popover>
     )
 }
+
+interface DatePickerProps {
+    date: Date | undefined
+    onSelect: (date: Date | undefined) => void
+    disabled?: boolean
+    className?: string
+}
+
+export function DatePicker({ date, onSelect, disabled, className }: DatePickerProps) {
+    return (
+        <div className={cn("grid gap-2", className)}>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !date && "text-muted-foreground"
+                        )}
+                        disabled={disabled}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={onSelect}
+                        initialFocus
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
+    )
+}
