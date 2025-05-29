@@ -1,5 +1,5 @@
 import { $Enums } from '@prisma/client';
-import { CRIME_RATE_COLORS } from '@/app/_utils/const/map';
+import { CRIME_RATE_COLORS } from '@/app/_utils/const/crime';
 import type { ICrimes } from '@/app/_utils/types/crimes';
 
 import { AlertTriangle, Shield } from "lucide-react";

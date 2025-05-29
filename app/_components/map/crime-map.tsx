@@ -394,32 +394,39 @@ export default function CrimeMap() {
     }, [ewsIncidents])
 
     return (
-        <Card className="w-full p-0 border-none shadow-none h-96">
-            <CardHeader className="flex flex-row pb-2 pt-0 px-0 items-center justify-between">
-                <CardTitle>Crime Map {getMapTitle()}</CardTitle>
-                <MapSelectors
-                    availableYears={availableYears || []}
-                    selectedYear={selectedYear ?? "all"}
-                    setSelectedYear={setSelectedYear}
-                    selectedMonth={selectedMonth}
-                    setSelectedMonth={setSelectedMonth}
-                    selectedCategory={selectedCategory}
-                    setSelectedCategory={setSelectedCategory}
-                    categories={categories}
-                    isYearsLoading={isYearsLoading}
-                    isCategoryLoading={isCategoryLoading}
-                    disableYearMonth={activeControl === "incidents" ||
-                        activeControl === "heatmap" ||
-                        activeControl === "timeline"}
-                />
-            </CardHeader>
+        <Card className="w-full p-0 border-none shadow-none h-96 ">
+            {isCrimesLoading ? (
+                <div className="flex items-center justify-between pb-2">
+                    <Skeleton className="h-8 w-32" />
+                    <div className="flex space-x-2">
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-8 w-24" />
+                    </div>
+                </div>
+            ) : (
+                <CardHeader className="flex flex-row pb-2 pt-0 px-0 items-center justify-between">
+                    <CardTitle>Crime Map {getMapTitle()}</CardTitle>
+                    <MapSelectors
+                        availableYears={availableYears || []}
+                        selectedYear={selectedYear ?? "all"}
+                        setSelectedYear={setSelectedYear}
+                        selectedMonth={selectedMonth}
+                        setSelectedMonth={setSelectedMonth}
+                        selectedCategory={selectedCategory}
+                        setSelectedCategory={setSelectedCategory}
+                        categories={categories}
+                        isYearsLoading={isYearsLoading}
+                        isCategoryLoading={isCategoryLoading}
+                        disableYearMonth={activeControl === "incidents" ||
+                            activeControl === "heatmap" ||
+                            activeControl === "timeline"}
+                    />
+                </CardHeader>
+            )}
             <CardContent className="p-0">
                 {isCrimesLoading
-                    ? (
-                        <div className="flex items-center justify-center h-96">
-                            <Skeleton className="h-full w-full rounded-md" />
-                        </div>
-                    )
+                    ? (<Skeleton className="h-[600px] w-full rounded-md" />)
                     : crimesError
                         ? (
                             <div className="flex flex-col items-center justify-center h-96 gap-4">

@@ -1,4 +1,5 @@
-import { CRIME_RATE_COLORS } from "@/app/_utils/const/map";
+
+import { CRIME_RATE_COLORS } from "@/app/_utils/const/crime";
 import { Overlay } from "../overlay";
 import { ControlPosition } from "mapbox-gl";
 

@@ -4,6 +4,7 @@ import { getCrimeRateColor, getFillOpacity } from "@/app/_utils/map/common"
 import type { IExtrusionLayerProps } from "@/app/_utils/types/map"
 import { useEffect, useRef } from "react"
 import { manageLayerVisibility } from "@/app/_utils/map/layer-visibility"
+import { MAPBOX_SOURCE_LAYER, MAPBOX_SOURCE_NAME } from "@/app/_utils/const/map"
 
 export default function DistrictExtrusionLayer({
     visible = true,
@@ -60,8 +61,8 @@ export default function DistrictExtrusionLayer({
             {
                 id: "district-extrusion",
                 type: "fill-extrusion",
-                source: "districts",
-                "source-layer": "Districts",
+                source: MAPBOX_SOURCE_NAME,
+                "source-layer": MAPBOX_SOURCE_LAYER,
                 paint: {
                     "fill-extrusion-color": [
                         "case",

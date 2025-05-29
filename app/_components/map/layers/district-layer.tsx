@@ -1,6 +1,6 @@
 "use client"
 
-import { BASE_BEARING, BASE_DURATION, BASE_PITCH, BASE_ZOOM } from "@/app/_utils/const/map"
+import { BASE_BEARING, BASE_DURATION, BASE_PITCH, BASE_ZOOM, MAPBOX_SOURCE_LAYER, MAPBOX_SOURCE_NAME } from "@/app/_utils/const/map"
 import { createFillColorExpression, getFillOpacity, processDistrictFeature } from "@/app/_utils/map/common"
 import type { IDistrictLayerProps } from "@/app/_utils/types/map"
 import { useEffect } from "react"
@@ -146,8 +146,8 @@ export default function DistrictFillLineLayer({
                             {
                                 id: "district-fill",
                                 type: "fill",
-                                source: "districts",
-                                "source-layer": "Districts",
+                                source: MAPBOX_SOURCE_NAME,
+                                "source-layer": MAPBOX_SOURCE_LAYER,
                                 paint: {
                                     "fill-color": fillColorExpression as any,
                                     "fill-opacity": fillOpacity,
@@ -162,8 +162,8 @@ export default function DistrictFillLineLayer({
                             {
                                 id: "district-line",
                                 type: "line",
-                                source: "districts",
-                                "source-layer": "Districts",
+                                source: MAPBOX_SOURCE_NAME,
+                                "source-layer": MAPBOX_SOURCE_LAYER,
                                 paint: {
                                     "line-color": "#ffffff",
                                     "line-width": 1,

@@ -2,7 +2,7 @@ import React from 'react'
 import { Layers, Info, Eye, Filter, MapPin, AlertTriangle, AlertCircle, Clock, Flame, MapPinned, Users, Map, Box, Thermometer } from 'lucide-react'
 import { Card, CardContent } from "@/app/_components/ui/card"
 import { Separator } from "@/app/_components/ui/separator"
-import { CRIME_RATE_COLORS } from "@/app/_utils/const/map"
+import { CRIME_RATE_COLORS } from "@/app/_utils/const/crime"
 import { SidebarSection } from "../components/sidebar-section"
 
 interface SidebarInfoTabProps {

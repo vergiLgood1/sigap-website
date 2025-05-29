@@ -20,7 +20,6 @@ const bentoGridItems: BentoGridItemProps[] = [
     {
         colSpan: "2",
         rowSpan: "2",
-        // suffixMenu: <YearSelector years={["2020", "2021", "2022", "2023", "2024"]} selectedYear="" onChange={() => { }} />,
         component: <CrimeMap />,
         className: "p-0"
     },
