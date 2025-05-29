@@ -214,17 +214,18 @@ model demographics {
 }
 
 model districts {
-  id           String         @id @db.VarChar(20)
-  city_id      String         @db.VarChar(20)
-  name         String         @db.VarChar(100)
-  created_at   DateTime?      @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime?      @default(now()) @db.Timestamptz(6)
-  crimes       crimes[]
-  demographics demographics[]
-  cities       cities         @relation(fields: [city_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  geographics  geographics[]
-  locations    locations[]
-  units        units?
+  id                String              @id @db.VarChar(20)
+  city_id           String              @db.VarChar(20)
+  name              String              @db.VarChar(100)
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  crimes            crimes[]
+  demographics      demographics[]
+  cities            cities              @relation(fields: [city_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  geographics       geographics[]
+  locations         locations[]
+  units             units?
+  district_clusters district_clusters[]
 
   @@index([city_id], map: "idx_districts_city_id")
   @@index([name], map: "idx_districts_name")
@@ -493,6 +494,53 @@ model location_logs {
 
   @@index([timestamp], map: "idx_location_logs_timestamp")
   @@index([user_id], map: "idx_location_logs_user_id")
+}
+
+model district_clusters {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  district_id String      @db.VarChar(20)
+  year        Int
+  month       Int?
+  risk_level  crime_rates @default(low)
+
+  // Clustering Variables
+  total_crimes       Int   @default(0)
+  population_density Float @default(0)
+  unemployment_rate  Float @default(0)
+
+  // Normalized Scores
+  crime_score        Float @default(0)
+  density_score      Float @default(0)
+  unemployment_score Float @default(0)
+
+  // Clustering Metadata
+  cluster_score     Float   @default(0)
+  centroid_features Json?
+  member_count      Int     @default(0)
+  last_update_type  String  @default("batch")
+  update_count      Int     @default(0)
+  needs_recompute   Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  district districts @relation(fields: [district_id], references: [id])
+
+  @@unique([district_id, year, month])
+  @@index([district_id])
+  @@index([risk_level])
+}
+
+model cluster_updates {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  district_id String   @db.VarChar(20)
+  update_type String
+  old_value   Json
+  new_value   Json
+  timestamp   DateTime @default(now()) @db.Timestamptz(6)
+  processed   Boolean  @default(false)
+
+  @@index([district_id, processed])
 }
 
 enum patrol_unit_category {
