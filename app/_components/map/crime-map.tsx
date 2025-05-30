@@ -45,12 +45,12 @@ import {
 import { useMap } from "react-map-gl/mapbox";
 import PanicButtonDemo from "./controls/panic-button-demo";
 import ClusterLegend from "./legends/map-legend";
+import TestClustering from "./layers/test-clustering";
+
 
 export default function CrimeMap() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-    const [activeControl, setActiveControl] = useState<ITooltipsControl>(
-        "clusters",
-    );
+    const [activeControl, setActiveControl] = useState<ITooltipsControl>("incidents");
     const [selectedDistrict, setSelectedDistrict] = useState<
         IDistrictFeature | null
     >(null);
@@ -79,6 +79,8 @@ export default function CrimeMap() {
     const [isTimelapsePlaying, setisTimelapsePlaying] = useState(false);
     const [yearProgress, setYearProgress] = useState(0);
     const [isSearchActive, setIsSearchActive] = useState(false);
+
+    const [kmeansMode, setKmeansMode] = useState<"incremental" | "batch">("batch");
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -374,18 +376,11 @@ export default function CrimeMap() {
         }
 
         setShowEWS(true);
-    };
 
-    // useEffect(() => {
-    //     console.log(`Current source type: ${selectedSourceType}`);
-    //     console.log(`Total crimes before filtering: ${crimes?.length || 0}`);
-    //     console.log(
-    //         `Total crimes after source type filtering: ${crimesBySourceType.length}`,
-    //     );
-    //     console.log(
-    //         `Total crimes after all filtering: ${filteredCrimes.length}`,
-    //     );
-    // }, [crimes, crimesBySourceType, filteredCrimes, selectedSourceType]);
+        if (controlId === "incremental" || controlId === "batch") {
+            setKmeansMode(controlId);
+        }
+    };
 
     const disableYearMonth = activeControl === "incidents" || activeControl === "heatmap" || activeControl === "timeline"
 
@@ -553,6 +548,9 @@ export default function CrimeMap() {
                                                     onPlayingChange={handleTimelinePlayingChange}
                                                 />
                                             </div>
+
+                                            <TestClustering />
+
                                         </MapView>
                                     </div>
                                 </div>

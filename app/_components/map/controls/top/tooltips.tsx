@@ -7,26 +7,26 @@ import AdditionalTooltips from "./additional-tooltips"
 import SearchTooltip from "./search-control"
 import type { ReactNode } from "react"
 import { ICrimeSourceTypes } from "@/app/_utils/types/map"
+import KMeansTooltips from "./kmeans-tooltips"
 
 // Define the possible control IDs for the crime map
 export type ITooltipsControl =
-    // Crime data views
     | "incidents"
     | "heatmap"
     | "units"
-    | "patrol"
-    | "reports"
     | "clusters"
+    | "incremental"
+    | "batch"
+    | "patrol"
     | "timeline"
-    | "recents"
-
-    // Tools and features
     | "refresh"
     | "search"
     | "alerts"
     | "layers"
     | "evidence"
     | "arrests"
+    | "reports"
+    | "recents";
 
 // Map tools type definition
 export interface IMapTools {
@@ -74,6 +74,8 @@ export default function Tooltips({
     const containerRef = useRef<HTMLDivElement>(null)
     const [isClient, setIsClient] = useState(false)
 
+    const yearParam = selectedYear === 'all' ? 0 : selectedYear;
+
     return (
         <div ref={containerRef} className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
@@ -102,13 +104,23 @@ export default function Tooltips({
                   disableYearMonth={disableYearMonth}
               />
 
-              {/* Search Control Component */}
+                {/* K-Means Tooltips Component */}
+                <KMeansTooltips
+                    activeControl={activeControl}
+                    onControlChange={onControlChange}
+                    sourceType={selectedSourceType}
+                    selectedYear={yearParam}
+                    selectedMonth={selectedMonth}
+                />
+
+                {/* Search Control Component */}
               <SearchTooltip
                   activeControl={activeControl}
                   onControlChange={onControlChange}
                   crimes={crimes}
                   sourceType={selectedSourceType}
               />
+
           </div>
       </div>
   )

@@ -16,6 +16,7 @@ import {
   UnauthenticatedError,
 } from "@/src/entities/errors/auth";
 import { InputParseError } from "@/src/entities/errors/common";
+import { KMeansService } from "@/app/_lib/kmeans-service";
 
 export async function getAvailableYears() {
   const instrumentationService = getInjection("IInstrumentationService");
@@ -223,7 +224,7 @@ export async function getRecentIncidents(): Promise<IIncidentLogs[]> {
               select: {
                 districts: {
                   select: {
-                    name:true
+                    name: true
                   }
                 },
                 address: true,
@@ -263,7 +264,7 @@ export async function getRecentIncidents(): Promise<IIncidentLogs[]> {
           created_at: incident.created_at ?? incident.time ?? new Date(),
           updated_at: incident.updated_at ?? incident.time ?? new Date(),
         }));
-        
+
       } catch (err) {
         if (err instanceof InputParseError) {
           throw new InputParseError(err.message);
@@ -287,7 +288,7 @@ export async function getRecentIncidents(): Promise<IIncidentLogs[]> {
 
 export async function getCrimeByYearAndMonth(
   year: number,
-  month: number | "all",
+  month?: number,
 ): Promise<ICrimesByYearAndMonth[]> {
   const instrumentationService = getInjection("IInstrumentationService");
   return await instrumentationService.instrumentServerAction(
@@ -299,7 +300,7 @@ export async function getCrimeByYearAndMonth(
           year: year,
         };
 
-        if (month !== "all") {
+        if (month !== undefined) {
           whereClause.month = month;
         }
 
@@ -937,8 +938,6 @@ export async function getPersonsOfInterest() {
           take: 3,
         });
 
-        console.log("Recent Reports:", recentReports);
-
         // Transform data for the component
         return recentReports.map((report) => ({
           id: report.id,
@@ -1101,4 +1100,144 @@ export async function getEmergencyCallsMetrics() {
   );
 }
 
+export async function getDistrictClusters(year: number, month?: number) {
+  const instrumentationService = getInjection("IInstrumentationService");
+  return await instrumentationService.instrumentServerAction(
+    "District Clusters",
+    { recordResponse: true },
+    async () => {
+      try {
+        // First, fetch the district clusters
+        const districtClusters = await db.district_clusters.findMany({
+          where: {
+            year: year,
+            month: month || null,
+          },
+          include: {
+            district: {
+              select: {
+                name: true,
+                geographics: {
+                  select: {
+                    latitude: true,
+                    longitude: true,
+                  }
+                }
+              }
+            }
+          }
+        });
 
+        // For each district, fetch associated crime incidents
+        const enhancedClusters = await Promise.all(
+          districtClusters.map(async (cluster) => {
+            // Find crime incidents for this district
+            const crimeIncidents = await db.crime_incidents.findMany({
+              where: {
+                crimes: {
+                  district_id: cluster.district_id,
+                  year: year,
+                  month: month || undefined
+                }
+              },
+              select: {
+                id: true,
+                crime_category_id: true,
+                description: true,
+                status: true,
+                timestamp: true,
+                crime_categories: {
+                  select: {
+                    name: true,
+                    type: true
+                  }
+                },
+                locations: {
+                  select: {
+                    latitude: true,
+                    longitude: true,
+                    address: true,
+                    districts: {
+                      select: {
+                        name: true
+                      }
+                    }
+                  }
+                }
+              },
+              take: 100 // Limit to avoid massive payloads
+            });
+
+            // Store incidents data as serialized JSON if needed
+            let incidents = null;
+            if (cluster.incidents_data) {
+              try {
+                incidents = JSON.parse(cluster.incidents_data as string);
+              } catch (e) {
+                console.error("Error parsing incidents data:", e);
+              }
+            }
+
+            // Return enhanced cluster with incidents data
+            return {
+              ...cluster,
+              incidents: crimeIncidents.length > 0 ? crimeIncidents : [],
+              incidents_count: crimeIncidents.length
+            };
+          })
+        );
+
+        return enhancedClusters;
+      } catch (error) {
+        const crashReporterService = getInjection("ICrashReporterService");
+        crashReporterService.report(error);
+        throw new Error("Failed to fetch district clusters");
+      }
+    }
+  );
+
+}
+export async function performKMeansClustering(
+  year: number,
+  month?: number,
+  mode: "incremental" | "batch" = "batch"
+) {
+  const instrumentationService = getInjection("IInstrumentationService");
+  return await instrumentationService.instrumentServerAction(
+    "KMeans Clustering",
+    { recordResponse: true },
+    async () => {
+      try {
+        const kmeansService = new KMeansService();
+        const result = await kmeansService.performClustering(year, month);
+        return result;
+      } catch (err) {
+        const crashReporterService = getInjection("ICrashReporterService");
+        crashReporterService.report(err);
+        throw new Error("Failed to perform clustering");
+      }
+    }
+  );
+}
+
+export async function processIncidentLogsForClustering(
+  year: number,
+  month?: number
+) {
+  const instrumentationService = getInjection("IInstrumentationService");
+  return await instrumentationService.instrumentServerAction(
+    "Process Incident Logs",
+    { recordResponse: true },
+    async () => {
+      try {
+        const clusteringService = new KMeansService();
+        const result = await clusteringService.performClustering(year, month);
+        return result;
+      } catch (err) {
+        const crashReporterService = getInjection("ICrashReporterService");
+        crashReporterService.report(err);
+        throw new Error("Failed to process incident logs for clustering");
+      }
+    }
+  );
+}

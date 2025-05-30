@@ -2,7 +2,7 @@
 
 import { PrismaClient, crime_rates, Prisma } from '@prisma/client';
 import { kmeans, Options } from 'ml-kmeans';
-
+import { CNumbers } from '../_utils/const/numbers';
 
 const prisma = new PrismaClient();
 
@@ -45,6 +45,12 @@ interface ClusterStats {
     };
 }
 
+interface MinMaxValues {
+    crimeRate: number;
+    populationDensity: number;
+    unemploymentRate: number;
+}
+
 type WeightedFeatures = {
     [K in keyof FeatureVector]: number;
 };
@@ -56,7 +62,6 @@ type CrimeGroupResult = {
     };
 };
 
-
 export class KMeansService {
     private readonly NUM_CLUSTERS = 3;
     private readonly WEIGHTS: WeightedFeatures = {
@@ -65,6 +70,111 @@ export class KMeansService {
         unemployment_rate: 0.3
     };
 
+    // Centralized methods for common operations
+    /**
+     * Normalize a value based on min and max
+     */
+    private normalize(value: number, min: number, max: number): number {
+        // Prevent division by zero
+        if (max === min) return 0.5;
+        return (value - min) / (max - min || 1);
+    }
+
+    /**
+     * Get risk level based on cluster score
+     */
+    private getRiskLevelFromScore(score: number): crime_rates {
+        if (score > 0.75) return 'critical';
+        if (score > 0.5) return 'high';
+        if (score > 0.25) return 'medium';
+        return 'low';
+    }
+
+    /**
+     * Calculate cluster score from feature vector
+     */
+    private calculateClusterScore(features: [number, number, number]): number {
+        const weights = Object.values(this.WEIGHTS);
+        return features.reduce((score, value, index) =>
+            score + value * weights[index],
+            0
+        );
+    }
+
+    /**
+     * Get risk level for a cluster based on centroids
+     */
+    private getRiskLevel(cluster: number, centroids: number[][]): crime_rates {
+        const weights = Object.values(this.WEIGHTS);
+        const centroidScore = centroids[cluster].reduce(
+            (score, value, index) => score + value * weights[index],
+            0
+        );
+
+        return this.getRiskLevelFromScore(centroidScore);
+    }
+
+    /**
+     * Get min and max values for feature normalization
+     */
+    private async getMinMaxValues(year: number, month?: number): Promise<{
+        minValues: MinMaxValues,
+        maxValues: MinMaxValues
+    }> {
+        const clusters = await prisma.district_clusters.findMany({
+            where: {
+                year,
+                month: month || null
+            },
+            include: {
+                district: {
+                    include: {
+                        demographics: {
+                            where: { year }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initialize with extreme values
+        const minValues = {
+            crimeRate: Infinity,
+            populationDensity: Infinity,
+            unemploymentRate: Infinity
+        };
+
+        const maxValues = {
+            crimeRate: -Infinity,
+            populationDensity: -Infinity,
+            unemploymentRate: -Infinity
+        };
+
+        // Calculate min/max values
+        for (const cluster of clusters) {
+            const demographic = cluster.district.demographics[0];
+
+            if (!demographic) continue;
+
+            const crimeRate = cluster.total_crimes / demographic.population;
+            const populationDensity = demographic.population_density;
+            const unemploymentRate = demographic.number_of_unemployed / demographic.population;
+
+            // Update min values
+            minValues.crimeRate = Math.min(minValues.crimeRate, crimeRate);
+            minValues.populationDensity = Math.min(minValues.populationDensity, populationDensity);
+            minValues.unemploymentRate = Math.min(minValues.unemploymentRate, unemploymentRate);
+
+            // Update max values
+            maxValues.crimeRate = Math.max(maxValues.crimeRate, crimeRate);
+            maxValues.populationDensity = Math.max(maxValues.populationDensity, populationDensity);
+            maxValues.unemploymentRate = Math.max(maxValues.unemploymentRate, unemploymentRate);
+        }
+
+        return { minValues, maxValues };
+    }
+
+    // Main functionality methods
     async getDistrictFeatures(year: number, month?: number): Promise<DistrictFeature[]> {
         const crimes = await prisma.crimes.groupBy({
             by: ['district_id'],
@@ -91,12 +201,7 @@ export class KMeansService {
     }
 
     private prepareFeatures(
-        crimes: {
-            district_id: string;
-            _sum: {
-                number_of_crime: number | null;
-            };
-        }[],
+        crimes: CrimeGroupResult[],
         demographics: Prisma.demographicsGetPayload<{
             select: {
                 district_id: true;
@@ -173,6 +278,7 @@ export class KMeansService {
         const updates = data.map((d, i) => {
             const cluster = result.clusters[i];
             const centroid = result.centroids[cluster];
+            // Use the centralized method
             const riskLevel = this.getRiskLevel(cluster, result.centroids);
 
             return {
@@ -219,27 +325,6 @@ export class KMeansService {
         });
     }
 
-    private getRiskLevel(cluster: number, centroids: number[][]): crime_rates {
-        const weights = Object.values(this.WEIGHTS);
-        const centroidScore = centroids[cluster].reduce(
-            (score, value, index) => score + value * weights[index],
-            0
-        );
-
-        if (centroidScore > 0.75) return 'critical';
-        if (centroidScore > 0.5) return 'high';
-        if (centroidScore > 0.25) return 'medium';
-        return 'low';
-    }
-
-    private calculateClusterScore(features: [number, number, number]): number {
-        const weights = Object.values(this.WEIGHTS);
-        return features.reduce((score, value, index) =>
-            score + value * weights[index],
-            0
-        );
-    }
-
     async getClusterStats(year: number, month?: number): Promise<ClusterStats[]> {
         const result = await prisma.district_clusters.groupBy({
             by: ['risk_level'],
@@ -261,7 +346,7 @@ export class KMeansService {
         return result as unknown as ClusterStats[];
     }
 
-    async needsRecompute(threshold: number = 10): Promise<boolean> {
+    async needsRecompute(threshold: number = CNumbers.KMEANS_THRESHOLD): Promise<boolean> {
         const outdatedClusters = await prisma.district_clusters.count({
             where: {
                 OR: [
@@ -274,7 +359,7 @@ export class KMeansService {
         return outdatedClusters > 0;
     }
 
-    async cleanupOldClusters(retentionMonths: number = 12): Promise<Prisma.BatchPayload> {
+    async cleanupOldClusters(retentionMonths: number = CNumbers.KMEANS_RETENTION_MONTHS): Promise<Prisma.BatchPayload> {
         const cutoffDate = new Date();
         cutoffDate.setMonth(cutoffDate.getMonth() - retentionMonths);
 
@@ -285,5 +370,121 @@ export class KMeansService {
                 }
             }
         });
+    }
+
+    async performIncrementalUpdate(year: number, month?: number): Promise<any> {
+        // Find districts that need updating
+        const districtsToUpdate = await prisma.district_clusters.findMany({
+            where: {
+                year,
+                month: month || null,
+                OR: [
+                    { needs_recompute: true },
+                    { update_count: { gt: 0 } }
+                ]
+            },
+            include: {
+                district: {
+                    include: {
+                        demographics: {
+                            where: { year }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (districtsToUpdate.length === 0) {
+            console.log("No districts need incremental updates");
+            return { updated: 0 };
+        }
+
+        console.log(`Performing incremental update for ${districtsToUpdate.length} districts`);
+
+        // Process each district that needs updating
+        const updates = [];
+
+        // Get min/max values once for all districts using the centralized method
+        const { minValues, maxValues } = await this.getMinMaxValues(year, month);
+
+        for (const cluster of districtsToUpdate) {
+            // Get demographic data
+            const demographic = cluster.district.demographics[0];
+
+            if (!demographic) {
+                console.warn(`No demographic data for district ${cluster.district_id} in year ${year}`);
+                continue;
+            }
+
+            // Calculate new scores based on updated crime counts
+            const crimeRate = cluster.total_crimes / demographic.population;
+            const populationDensity = demographic.population_density;
+            const unemploymentRate = demographic.number_of_unemployed / demographic.population;
+
+            // Use centralized normalize method
+            const normalizedCrimeRate = this.normalize(crimeRate, minValues.crimeRate, maxValues.crimeRate);
+            const normalizedDensity = this.normalize(populationDensity, minValues.populationDensity, maxValues.populationDensity);
+            const normalizedUnemploymentRate = this.normalize(unemploymentRate, minValues.unemploymentRate, maxValues.unemploymentRate);
+
+            // Use centralized calculateClusterScore method
+            const newClusterScore = this.calculateClusterScore([
+                normalizedCrimeRate,
+                normalizedDensity,
+                normalizedUnemploymentRate
+            ]);
+
+            // Use centralized getRiskLevelFromScore method
+            const newRiskLevel = this.getRiskLevelFromScore(newClusterScore);
+
+            // Update cluster in database
+            await prisma.district_clusters.update({
+                where: { id: cluster.id },
+                data: {
+                    crime_score: normalizedCrimeRate,
+                    density_score: normalizedDensity,
+                    unemployment_score: normalizedUnemploymentRate,
+                    cluster_score: newClusterScore,
+                    risk_level: newRiskLevel,
+                    update_count: 0, // Reset update count
+                    needs_recompute: false,
+                    last_update_type: 'incremental',
+                    updated_at: new Date()
+                }
+            });
+
+            // Log the update
+            updates.push({
+                district_id: cluster.district_id,
+                update_type: 'incremental',
+                old_value: {
+                    crime_score: cluster.crime_score,
+                    density_score: cluster.density_score,
+                    unemployment_score: cluster.unemployment_score,
+                    cluster_score: cluster.cluster_score,
+                    risk_level: cluster.risk_level
+                },
+                new_value: {
+                    crime_score: normalizedCrimeRate,
+                    density_score: normalizedDensity,
+                    unemployment_score: normalizedUnemploymentRate,
+                    cluster_score: newClusterScore,
+                    risk_level: newRiskLevel
+                },
+                processed: true,
+                timestamp: new Date()
+            });
+        }
+
+        // Create update logs
+        if (updates.length > 0) {
+            await prisma.cluster_updates.createMany({
+                data: updates
+            });
+        }
+
+        return {
+            updated: updates.length,
+            clusters: districtsToUpdate.length
+        };
     }
 }

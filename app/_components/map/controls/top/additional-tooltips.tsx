@@ -126,8 +126,7 @@ export default function AdditionalTooltips({
                                                 ? "animate-pulse ring-2 ring-red-500"
                                                 : ""
                                         }`}
-                                        onClick={() =>
-                                            onControlChange?.(control.id)}
+                                        onClick={() => onControlChange?.(control.id)}
                                         disabled={isButtonDisabled}
                                         aria-disabled={isButtonDisabled}
                                     >

@@ -49,28 +49,28 @@ export const createFillColorExpression = (
     { number_of_crime?: number; level?: $Enums.crime_rates }
   >
 ) => {
-  const colorEntries = focusedDistrictId
-    ? [
-      [
-        focusedDistrictId,
-        getCrimeRateColor(crimeDataByDistrict[focusedDistrictId]?.level),
-      ],
-      'rgba(0,0,0,0.05)',
-    ]
-    : Object.entries(crimeDataByDistrict).flatMap(([districtId, data]) => {
-      return [districtId, getCrimeRateColor(data.level)];
-    });
-
-  return [
-    'case',
-    ['has', 'kode_kec'],
-    [
+  if (focusedDistrictId) {
+    // When a district is focused, create a simple match expression
+    return [
       'match',
       ['get', 'kode_kec'],
-      ...colorEntries,
-      focusedDistrictId ? 'rgba(0,0,0,0.05)' : CRIME_RATE_COLORS.default,
-    ],
-    CRIME_RATE_COLORS.default,
+      focusedDistrictId,
+      getCrimeRateColor(crimeDataByDistrict[focusedDistrictId]?.level),
+      'rgba(0,0,0,0.05)' // Default color for non-focused districts
+    ];
+  }
+
+  // When no district is focused, create a match expression for all districts
+  const matchPairs = Object.entries(crimeDataByDistrict).flatMap(([districtId, data]) => [
+    districtId,
+    getCrimeRateColor(data.level)
+  ]);
+
+  return [
+    'match',
+    ['get', 'kode_kec'],
+    ...matchPairs,
+    CRIME_RATE_COLORS.default // Default color for districts not in the data
   ];
 };
 

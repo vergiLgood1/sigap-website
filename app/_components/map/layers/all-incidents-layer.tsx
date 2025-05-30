@@ -15,6 +15,8 @@ import type mapboxgl from "mapbox-gl";
 import type { MapGeoJSONFeature, MapMouseEvent } from "react-map-gl/mapbox";
 import { manageLayerVisibility } from "@/app/_utils/map/layer-visibility";
 import { getCategoryColor } from "@/app/_utils/colors";
+import type { Map, ExpressionSpecification } from "mapbox-gl";
+
 
 interface IAllIncidentsLayerProps {
     visible?: boolean;
@@ -51,6 +53,17 @@ interface IIncidentDetails {
     longitude: number;
 }
 
+const DEFAULT_CIRCLE_COLOR = "#888888";
+const DEFAULT_CIRCLE_RADIUS = 6;
+
+type MapboxPaintProperty = {
+    "circle-radius": ExpressionSpecification | number;
+    "circle-color": ExpressionSpecification;
+    "circle-opacity": number;
+    "circle-stroke-width": number;
+    "circle-stroke-color": string;
+};
+
 export default function AllIncidentsLayer(
     { visible = false, map, crimes = [], filterCategory = "all" }:
         IAllIncidentsLayerProps,
@@ -67,6 +80,90 @@ export default function AllIncidentsLayer(
         "all-incidents-circles",
         "all-incidents",
     ];
+
+    // Helper function to safely check if a layer exists
+    const layerExists = useCallback((layerId: string) => {
+        if (!map) return false;
+        try {
+            return !!map.getLayer(layerId);
+        } catch {
+            return false;
+        }
+    }, [map]);
+
+    // Helper function to safely set layer visibility
+    const setLayerVisibility = useCallback((layerId: string, visible: boolean) => {
+        if (!map || !layerExists(layerId)) return;
+        try {
+            map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+        } catch (error) {
+            console.warn(`Failed to set visibility for layer ${layerId}:`, error);
+        }
+    }, [map, layerExists]);
+
+    // Helper function to safely set paint property
+    const setPaintProperty = useCallback((
+        layerId: string,
+        property: keyof MapboxPaintProperty,
+        value: MapboxPaintProperty[keyof MapboxPaintProperty]
+    ) => {
+        if (!map || !layerExists(layerId)) return;
+        try {
+            map.setPaintProperty(layerId, property, value);
+        } catch (error) {
+            console.warn(`Failed to set paint property ${String(property)} for layer ${layerId}:`, error);
+        }
+    }, [map, layerExists]);
+
+    // Helper function to validate circle color expression
+    const validateCircleColorExpression = useCallback((expression: any): ExpressionSpecification => {
+        const defaultExpression: ExpressionSpecification = [
+            "match",
+            ["get", "severity"],
+            "high",
+            "#EC6B56",
+            "medium",
+            "#FFC154",
+            "low",
+            "#47B39C",
+            DEFAULT_CIRCLE_COLOR
+        ];
+
+        if (!Array.isArray(expression)) {
+            return defaultExpression;
+        }
+
+        if (expression[0] === "match" && expression.length < 4) {
+            return defaultExpression;
+        }
+
+        return expression as ExpressionSpecification;
+    }, []);
+
+    // Helper function to validate circle radius expression
+    const validateCircleRadiusExpression = useCallback((expression: any): ExpressionSpecification | number => {
+        const defaultExpression: ExpressionSpecification = [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, DEFAULT_CIRCLE_RADIUS,
+            15, DEFAULT_CIRCLE_RADIUS * 2
+        ];
+
+        if (!expression) {
+            return defaultExpression;
+        }
+
+        if (typeof expression === "number") {
+            return expression;
+        }
+
+        if (!Array.isArray(expression) || expression.length < 4) {
+            return defaultExpression;
+        }
+
+        return expression as ExpressionSpecification;
+    }, []);
 
     const handleIncidentClick = useCallback(
         (e: MapMouseEvent & { features?: MapGeoJSONFeature[] }) => {
@@ -157,7 +254,7 @@ export default function AllIncidentsLayer(
             if (!isVisible) {
                 setSelectedIncident(null);
 
-            // Cancel animation frame when hiding the layer
+                // Cancel animation frame when hiding the layer
                 if (animationFrameRef.current) {
                     cancelAnimationFrame(animationFrameRef.current);
                     animationFrameRef.current = null;

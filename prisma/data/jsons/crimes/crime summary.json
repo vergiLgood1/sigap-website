@@ -1,32 +1,26 @@
 [
   {
     "year": 2020,
-    "crime_total": 1721,
-    "crime_cleared": 1419,
-    "clearance_rate": 82.45
+    "number_of_crime": 1721
   },
   {
     "year": 2021,
-    "crime_total": 1975,
-    "crime_cleared": 1725,
-    "clearance_rate": 87.34
+    "number_of_crime": 1975
   },
   {
     "year": 2022,
-    "crime_total": 2928,
-    "crime_cleared": 2646,
-    "clearance_rate": 90.37
+    "number_of_crime": 1464
   },
   {
     "year": 2023,
-    "crime_total": 2302,
-    "crime_cleared": 1988,
-    "clearance_rate": 86.36
+    "number_of_crime": 1151
   },
   {
     "year": 2024,
-    "crime_total": 2366,
-    "crime_cleared": 1962,
-    "clearance_rate": 82.92
+    "number_of_crime": 1183
+  },
+  {
+    "year": 2025,
+    "number_of_crime": 2462
   }
 ]

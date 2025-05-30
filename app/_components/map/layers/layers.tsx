@@ -508,7 +508,6 @@ export default function Layers({
             "all-incidents-circles",
             "all-incidents",
         ];
-
         // First, hide all layers that don't match the current active control
         if (activeControl !== "recents") {
             manageLayerVisibility(mapboxMap, recentLayerIds, false);
@@ -623,6 +622,7 @@ export default function Layers({
                 clusteringEnabled={activeControl === "clusters"}
                 showClusters={activeControl === "clusters"}
                 sourceType={sourceType}
+                // kmeansMode='incremental'
             />
 
             {selectedDistrict && !selectedIncident &&

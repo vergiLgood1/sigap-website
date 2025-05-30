@@ -1,4 +1,5 @@
 import { IDistrictGeoData } from "./district";
+import type { Map } from "mapbox-gl";
 
 export interface IGeoJSONPolygon {
     type: 'Polygon' | 'MultiPolygon';
@@ -110,3 +111,37 @@ export interface IUnclusteredPointLayerProps extends IBaseLayerProps {
 
 // Source type crimes
 export type ICrimeSourceTypes = "cbt" | "cbu"
+
+export interface IIncidentLayerProps {
+  visible?: boolean
+  map: Map
+  incidents?: Array<{
+    id: string
+    severity?: string
+    category?: string
+    description?: string
+    timestamp?: Date
+    longitude?: number
+    latitude?: number
+  }>
+  filterCategory?: string
+  onClick?: (incident: any) => void
+}
+
+export interface IUnitsLayerProps {
+  visible?: boolean
+  map: Map
+  units?: Array<{
+    id: string
+    name: string
+    code: string
+    status: string
+    type: string
+    members: any[]
+    last_update?: Date
+    longitude?: number
+    latitude?: number
+  }>
+  filterStatus?: string
+  onClick?: (unit: any) => void
+}

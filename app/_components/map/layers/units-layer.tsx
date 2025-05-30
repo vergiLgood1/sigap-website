@@ -45,6 +45,17 @@ interface IncidentProperties {
     latitude: number
 }
 
+const DEFAULT_CIRCLE_COLOR = "#888888"
+const DEFAULT_CIRCLE_RADIUS = 6
+
+type MapboxPaintProperty = {
+    "circle-radius": mapboxgl.ExpressionSpecification | number;
+    "circle-color": mapboxgl.ExpressionSpecification;
+    "circle-opacity": number;
+    "circle-stroke-width": number;
+    "circle-stroke-color": string;
+}
+
 export default function UnitsLayer({ crimes, units = [], filterCategory, visible = false, map }: UnitsLayerProps) {
     const [loadedUnits, setLoadedUnits] = useState<IUnits[]>([])
     const loadedUnitsRef = useRef<IUnits[]>([])
@@ -264,6 +275,90 @@ export default function UnitsLayer({ crimes, units = [], filterCategory, visible
             features: lineFeatures,
         }
     }, [unitsData, crimes, filterCategory, categoryColorMap])
+
+    // Helper function to safely check if a layer exists
+    const layerExists = useCallback((layerId: string) => {
+        if (!map) return false
+        try {
+            return !!map.getLayer(layerId)
+        } catch {
+            return false
+        }
+    }, [map])
+
+    // Helper function to safely set layer visibility
+    const setLayerVisibility = useCallback((layerId: string, visible: boolean) => {
+        if (!map || !layerExists(layerId)) return
+        try {
+            map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none")
+        } catch (error) {
+            console.warn(`Failed to set visibility for layer ${layerId}:`, error)
+        }
+    }, [map, layerExists])
+
+    // Helper function to safely set paint property
+    const setPaintProperty = useCallback((
+        layerId: string,
+        property: keyof MapboxPaintProperty,
+        value: MapboxPaintProperty[keyof MapboxPaintProperty]
+    ) => {
+        if (!map || !layerExists(layerId)) return
+        try {
+            map.setPaintProperty(layerId, property, value)
+        } catch (error) {
+            console.warn(`Failed to set paint property ${String(property)} for layer ${layerId}:`, error)
+        }
+    }, [map, layerExists])
+
+    // Helper function to validate circle color expression
+    const validateCircleColorExpression = useCallback((expression: any): mapboxgl.ExpressionSpecification => {
+        const defaultExpression: mapboxgl.ExpressionSpecification = [
+            "match",
+            ["get", "status"],
+            "on duty",
+            "#4CAF50",
+            "off duty",
+            "#FF5252",
+            "on break",
+            "#FFC107",
+            DEFAULT_CIRCLE_COLOR
+        ]
+
+        if (!Array.isArray(expression)) {
+            return defaultExpression
+        }
+
+        if (expression[0] === "match" && expression.length < 4) {
+            return defaultExpression
+        }
+
+        return expression as mapboxgl.ExpressionSpecification
+    }, [])
+
+    // Helper function to validate circle radius expression
+    const validateCircleRadiusExpression = useCallback((expression: any): mapboxgl.ExpressionSpecification | number => {
+        const defaultExpression: mapboxgl.ExpressionSpecification = [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, DEFAULT_CIRCLE_RADIUS,
+            15, DEFAULT_CIRCLE_RADIUS * 2
+        ]
+
+        if (!expression) {
+            return defaultExpression
+        }
+
+        if (typeof expression === "number") {
+            return expression
+        }
+
+        if (!Array.isArray(expression) || expression.length < 4) {
+            return defaultExpression
+        }
+
+        return expression as mapboxgl.ExpressionSpecification
+    }, [])
 
     // Handle unit click
     const handleUnitClick = useCallback(

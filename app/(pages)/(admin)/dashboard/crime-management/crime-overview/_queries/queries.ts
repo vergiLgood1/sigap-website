@@ -14,6 +14,9 @@ import {
   getPersonsOfInterest,
   getEvidenceTracking,
   getEmergencyCallsMetrics,
+  performKMeansClustering,
+  getDistrictClusters,
+  processIncidentLogsForClustering,
 } from '../action';
 
 export const useGetAvailableYears = () => {
@@ -29,7 +32,7 @@ export const useGetCrimeByYearAndMonth = (
 ) => {
   return useQuery({
     queryKey: ['crimes', year, month],
-    queryFn: () => getCrimeByYearAndMonth(year, month),
+    queryFn: () => getCrimeByYearAndMonth(year, month === 'all' ? undefined : month),
   });
 };
 
@@ -114,5 +117,40 @@ export const useGetEmergencyCallsMetrics = () => {
   return useQuery({
     queryKey: ['emergency-calls-metrics'],
     queryFn: () => getEmergencyCallsMetrics(),
+  });
+};
+
+export const useGetDistrictClusters = (
+  year: number,
+  month?: number
+) => {
+  return useQuery({
+    queryKey: ['district-clusters', year, month],
+    queryFn: () => getDistrictClusters(year, month),
+  })
+}
+
+export const useGetKMeansClustering = (
+  year: number,
+  month?: number,
+  mode: "incremental" | "batch" = "batch",
+  options: { enabled?: boolean } = {}
+) => {
+  return useQuery({
+    queryKey: ['kmeans-clustering', year, month, mode],
+    queryFn: () => performKMeansClustering(year, month, mode),
+    ...options,
+    enabled: options.hasOwnProperty('enabled') ? options.enabled : false, // Disable auto-fetching by default
+  });
+};
+
+export const useProcessIncidentLogs = (
+  year: number,
+  month?: number
+) => {
+  return useQuery({
+    queryKey: ['process-incident-logs', year, month],
+    queryFn: () => processIncidentLogsForClustering(year, month),
+    enabled: false, // Don't run automatically
   });
 };

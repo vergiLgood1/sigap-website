@@ -33,8 +33,9 @@ export function useCrimeMapHandler(
   } = useQuery({
     queryKey: ['crimes', selectedYear, selectedMonth],
     queryFn: async () => {
-      // Now always pass year as a number
-      return await getCrimeByYearAndMonth(selectedYear, selectedMonth);
+      // Handle the case where selectedMonth is 'all'
+      const monthParam = selectedMonth === 'all' ? undefined : selectedMonth;
+      return await getCrimeByYearAndMonth(selectedYear, monthParam);
     },
   });
 

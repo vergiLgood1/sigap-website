@@ -521,6 +521,13 @@ model district_clusters {
   update_count      Int     @default(0)
   needs_recompute   Boolean @default(false)
 
+  // Migration tracking
+  migrated_to_crimes Boolean   @default(false)
+  migration_date     DateTime?
+
+  // Relation to crime incidents
+  incidents_data Json? // Will store crime incident details as JSON
+
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @updatedAt @db.Timestamptz(6)
 
@@ -529,6 +536,7 @@ model district_clusters {
   @@unique([district_id, year, month])
   @@index([district_id])
   @@index([risk_level])
+  @@index([migrated_to_crimes])
 }
 
 model cluster_updates {

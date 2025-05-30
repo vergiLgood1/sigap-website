@@ -9,7 +9,7 @@ import { IUserSchema } from '@/src/entities/models/users/users.model';
 import db from '../../prisma/db';
 import { v4 as uuidv4 } from 'uuid';
 import * as crypto from 'crypto';
-import { CRIME_RATE_COLORS } from './const/map';
+
 import { districtsGeoJson } from '../../prisma/data/geojson/jember/districts-geojson';
 
 
@@ -846,34 +846,146 @@ function extractCounterFromId(id: string, pattern: RegExp): number {
 }
 
 /**
+ * Get the appropriate regex pattern based on table name and ID format
+ * @param tableName Database table name
+ * @param sampleId Optional sample ID to determine format
+ */
+function getCounterPatternForTable(tableName: string, sampleId?: string): RegExp {
+  // Common patterns based on table name
+  switch (tableName.toLowerCase()) {
+    case 'crimes':
+      // Handles both CR-3509-0001-2020 and CR-3509-2025 formats
+      return /-(\d{4})-\d{4}$|(?<=-)\d{4}$/;
+
+    case 'crime_incidents':
+      // Handles CI-3509-0001-2025 format
+      return /-(\d{4})-\d{4}$/;
+
+    case 'evidence':
+      // Handles EV-0001 format
+      return /-(\d{4})$/;
+
+    case 'crime_categories':
+      // Handles CC-0010 format
+      return /-(\d+)$/;
+
+    case 'units':
+      // Handles UT-0001 format
+      return /-(\d+)$/;
+
+    default:
+      // If specific pattern can't be determined, use a general one
+      if (sampleId) {
+        // Try to infer pattern from sample ID
+        if (sampleId.includes('-')) {
+          const parts = sampleId.split('-');
+          // If format looks like XX-####-####-####
+          if (parts.length >= 3 && parts[2].length === 4 && /^\d+$/.test(parts[2])) {
+            return new RegExp(`-([${parts[2].length}])(?:-|$)`);
+          }
+          // If format looks like XX-####
+          if (parts.length >= 2 && /^\d+$/.test(parts[1])) {
+            return /-(\d+)$/;
+          }
+        }
+      }
+
+      // Default pattern that works for most formats: extract numbers after last hyphen
+      return /-(\d+)(?:-\d+)*$/;
+  }
+}
+
+/**
  * Retrieves the last ID from a specific table and extracts its counter
  * @param tableName The table to query
  * @param counterPattern RegExp pattern to extract counter (with capture group)
- * @param orderByField Field to order by (usually 'id' or 'createdAt')
+ * @param idField Field containing the ID (usually 'id')
  * @returns The last used counter number
  */
 export async function getLastIdCounter(
   tableName: string,
-  counterPattern: RegExp,
-  orderByField: string = 'id'
+  counterPattern?: RegExp,
+  idField: string = 'id'
 ): Promise<number> {
   try {
-    // Use MAX() function for better performance
+    // Query to get all IDs from the table
     const result = await db.$queryRawUnsafe(
-      `SELECT MAX("${orderByField}") as max_id FROM "${tableName}"`
+      `SELECT "${idField}" FROM "${tableName}" ORDER BY "${idField}" DESC LIMIT 10`
     );
 
-    // Extract the ID from the result
+    // Process results - try to find the highest counter value from the IDs
     if (result && Array.isArray(result) && result.length > 0) {
-      const lastId = result[0].max_id;
-      if (lastId) {
-        return extractCounterFromId(lastId, counterPattern);
+      let maxCounter = 0;
+
+      // If no pattern provided, determine appropriate pattern based on table
+      const patternToUse = counterPattern || getCounterPatternForTable(tableName, result[0]?.[idField]);
+
+      console.log(`[getLastIdCounter] Using pattern ${patternToUse} for table ${tableName}`);
+
+      // Examine each ID to find the highest counter
+      for (const row of result) {
+        const id = row[idField];
+        if (id && typeof id === 'string') {
+          let counter = 0;
+
+          // Try pattern match first with our table-specific pattern
+          const match = id.match(patternToUse);
+          if (match && match[1]) {
+            counter = parseInt(match[1], 10);
+            console.log(`[getLastIdCounter] Extracted counter ${counter} from ID ${id} using regex pattern`);
+          } else {
+            // Special case handling for different ID formats
+            if (tableName.toLowerCase() === 'crimes' && id.match(/CR-\d+-\d+$/)) {
+              // Handle CR-3509-2025 format (where the number after last hyphen is a year)
+              const parts = id.split('-');
+              if (parts.length === 3) {
+                // For this format, use the year as counter
+                counter = parseInt(parts[2], 10);
+                console.log(`[getLastIdCounter] Extracted year counter ${counter} from ID ${id}`);
+              }
+            }
+            else if (tableName.toLowerCase() === 'crimes' && id.match(/CR-\d+-\d+-\d+$/)) {
+              // Handle CR-3509-0001-2020 format
+              const parts = id.split('-');
+              if (parts.length === 4) {
+                counter = parseInt(parts[2], 10);
+                console.log(`[getLastIdCounter] Extracted counter ${counter} from ID ${id} (4-part format)`);
+              }
+            }
+            else {
+              // Fallback: try to find any sequence of digits that looks like a counter
+              const digitGroups = id.match(/\d+/g);
+              if (digitGroups) {
+                // Look for sequences with leading zeros (likely counters)
+                const leadingZeros = digitGroups.filter(g => g.startsWith('0') && g.length > 1);
+
+                if (leadingZeros.length > 0) {
+                  // Take the first sequence with leading zeros
+                  counter = parseInt(leadingZeros[0], 10);
+                  console.log(`[getLastIdCounter] Found counter with leading zeros: ${counter} in ID ${id}`);
+                } else {
+                  // If no leading zeros, take the last numeric sequence
+                  // For IDs like UT-0001, CC-0008, etc.
+                  const lastGroup = digitGroups[digitGroups.length - 1];
+                  counter = parseInt(lastGroup, 10);
+                  console.log(`[getLastIdCounter] Using last numeric group: ${counter} from ID ${id}`);
+                }
+              }
+            }
+          }
+
+          maxCounter = Math.max(maxCounter, counter);
+        }
       }
+
+      console.log(`[getLastIdCounter] Final max counter for ${tableName}: ${maxCounter}`);
+      return maxCounter;
     }
 
+    console.log(`[getLastIdCounter] No records found in ${tableName}, returning 0`);
     return 0; // No records found, start from 0
   } catch (error) {
-    console.error(`Error fetching last ID from ${tableName}:`, error);
+    console.error(`Error fetching last ID counter from ${tableName}:`, error);
     return 0; // Return 0 on error (will start new sequence)
   }
 }
@@ -882,7 +994,7 @@ export async function getLastIdCounter(
  * Generate an ID with counter continuation from database with robust duplication prevention
  * @param tableName Prisma table name to check for last ID
  * @param options ID generation options
- * @param counterPattern RegExp pattern to extract counter (with capture group)
+ * @param counterPattern Optional RegExp pattern to extract counter
  * @returns Generated ID string
  */
 export async function generateIdWithDbCounter(
@@ -904,13 +1016,13 @@ export async function generateIdWithDbCounter(
     uniquenessStrategy?: 'counter';
     retryOnCollision?: boolean;
     maxRetries?: number;
-    useUuid?: boolean; // Option to force UUID generation
-    uuidFormat?: 'standard' | 'short' | 'prefix-short' | 'no-dashes'; // UUID format options
-    uuidLength?: number; // Control length when using short formats
-  } = {},
-  counterPattern: RegExp = /(\d+)$/
+    useUuid?: boolean;
+    uuidFormat?: 'standard' | 'short' | 'prefix-short' | 'no-dashes';
+    uuidLength?: number;
+    idField?: string; // Field to specify which column contains the IDs
+  } = {}
 ): Promise<string> {
-  // Check if we should use UUID instead of sequential ID
+  // UUID generation handling remains unchanged
   if (options.useUuid) {
     const uuid = crypto.randomUUID();
 
@@ -938,8 +1050,15 @@ export async function generateIdWithDbCounter(
     }
   }
 
+  // Get table-specific pattern if none provided
+  const counterPattern = getCounterPatternForTable(tableName);
+
   // Get the last counter from the database
-  const lastCounter = await getLastIdCounter(tableName, counterPattern);
+  const lastCounter = await getLastIdCounter(
+    tableName,
+    counterPattern,
+    options.idField || (tableName === 'units' ? 'code_unit' : 'id')
+  );
   
   // Configure ID generation options to use the counter strategy with the last counter + 1
   const idOptions = {

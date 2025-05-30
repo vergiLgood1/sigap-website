@@ -31,4 +31,16 @@ export class CNumbers {
     static readonly PHONE_MAX_LENGTH = 13;
 
     static readonly MAX_FILE_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
+
+    // Kmeans related constants
+    static readonly KMEANS_THRESHOLD = 10;
+    static readonly KMEANS_RETENTION_MONTHS = 12;
+    static readonly KMEANS_RECOMPUTE_INTERVAL = 1000 * 60 * 60 * 24; // 24 hours
+    static readonly KMEANS_RECOMPUTE_INTERVAL_MONTH = 1000 * 60 * 60 * 24 * 30; // 30 days
+    static readonly KMEANS_RECOMPUTE_INTERVAL_YEAR = 1000 * 60 * 60 * 24 * 365; // 365 days
+    static readonly KMEANS_RECOMPUTE_INTERVAL_QUARTER = 1000 * 60 * 60 * 24 * 90; // 90 days
+    static readonly KMEANS_RECOMPUTE_INTERVAL_HALF_YEAR = 1000 * 60 * 60 * 24 * 180; // 180 days
+
+    // Number of days after which a cluster is considered finalized
+    static readonly CLUSTER_FINALIZATION_DAYS = 5;
 }
