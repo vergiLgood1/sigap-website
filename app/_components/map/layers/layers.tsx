@@ -37,6 +37,7 @@ import RecentIncidentsLayer from "./recent-incidents-layer";
 import IncidentPopup from "../pop-up/incident-popup";
 import { manageLayerVisibility } from "@/app/_utils/map/layer-visibility";
 import AllIncidentsLayer from "./all-incidents-layer";
+import CBUClusterLayer from "./cbu-cluster-layer";
 
 // Interface for crime incident
 interface ICrimeIncident {
@@ -440,9 +441,9 @@ export default function Layers({
                     if (
                         prevDistrict?.id === updatedDistrict.id &&
                         prevDistrict?.selectedYear ===
-                            updatedDistrict.selectedYear &&
+                        updatedDistrict.selectedYear &&
                         prevDistrict?.selectedMonth ===
-                            updatedDistrict.selectedMonth
+                        updatedDistrict.selectedMonth
                     ) {
                         return prevDistrict;
                     }
@@ -613,30 +614,41 @@ export default function Layers({
                 map={mapboxMap}
             />
 
-            <ClusterLayer
-                visible={visible && activeControl === "clusters"}
-                map={mapboxMap}
-                crimes={crimes}
-                filterCategory={filterCategory}
-                focusedDistrictId={focusedDistrictId}
-                clusteringEnabled={activeControl === "clusters"}
-                showClusters={activeControl === "clusters"}
-                sourceType={sourceType}
-                // kmeansMode='incremental'
-            />
+            {sourceType === "cbt" ? (
+                <ClusterLayer
+                    visible={visible && activeControl === "clusters"}
+                    map={mapboxMap}
+                    crimes={crimes}
+                    filterCategory={filterCategory}
+                    focusedDistrictId={focusedDistrictId}
+                    clusteringEnabled={activeControl === "clusters"}
+                    showClusters={activeControl === "clusters"}
+
+                />
+            ) : (
+                <CBUClusterLayer
+                    visible={visible && activeControl === "clusters"}
+                    map={mapboxMap}
+                    crimes={crimes}
+                    filterCategory={filterCategory}
+                    focusedDistrictId={focusedDistrictId}
+                    clusteringEnabled={activeControl === "clusters"}
+                    showClusters={activeControl === "clusters"}
+                />
+            )}
 
             {selectedDistrict && !selectedIncident &&
                 !isInteractingWithMarker.current && (
-                <DistrictPopup
-                    longitude={selectedDistrict.longitude || 0}
-                    latitude={selectedDistrict.latitude || 0}
-                    onClose={handleCloseDistrictPopup}
-                    district={selectedDistrict}
-                    year={year}
-                    month={month}
-                    filterCategory={filterCategory}
-                />
-            )}
+                    <DistrictPopup
+                        longitude={selectedDistrict.longitude || 0}
+                        latitude={selectedDistrict.latitude || 0}
+                        onClose={handleCloseDistrictPopup}
+                        district={selectedDistrict}
+                        year={year}
+                        month={month}
+                        filterCategory={filterCategory}
+                    />
+                )}
 
             <TimezoneLayer map={mapboxMap} />
 
