@@ -13,7 +13,7 @@ interface ExtendedClusterLayerProps extends IClusterLayerProps {
   sourceType?: string
 }
 
-export default function ClusterLayer({
+export default function CBTClusterLayer({
   visible = true,
   map,
   crimes = [],
@@ -41,94 +41,25 @@ export default function ClusterLayer({
       const clusterId: number = features[0].properties?.cluster_id as number
 
       try {
-        // For CBT type, get crime count based on the number of available incidents
-        // For CBU type, use the already validated crime_count from our useEffect
-        let features: GeoJSON.Feature[] = [];
-        let totalCrimes = 0;
-
-        if (sourceType === "cbu") {
-          // For CBU, we need to use weighted points based on crime_count
-          // Only count crimes with valid month and year data
-          features = crimes.map(crime => {
-            const crimeCount = (crime.month != null && crime.year != null) ? (crime.number_of_crime || 0) : 0;
-            totalCrimes += crimeCount;
-
-            return {
-              type: "Feature",
-              properties: {
-                district_id: crime.district_id,
-                district_name: crime.districts ? crime.districts.name : "Unknown",
-                crime_count: crimeCount,
-                level: crime.level,
-                category: filterCategory !== "all" ? filterCategory : "All",
-                year: crime.year,
-                month: crime.month,
-                isCBU: true,
-                weight: crimeCount,
-              },
-              geometry: {
-                type: "Point",
-                coordinates: [
-                  crime.districts?.geographics?.[0]?.longitude || 0,
-                  crime.districts?.geographics?.[0]?.latitude || 0,
-                ],
-              },
-            } as GeoJSON.Feature;
-          }).filter(feature =>
-            feature.properties &&
-            feature.properties.crime_count > 0 &&
-            feature.properties.year != null &&
-            feature.properties.month != null
-          );
-        } else {
-          // For CBT, count crimes based on the actual number of incidents
-          // Group crimes by district to correctly count them
-          const districtMap = new Map();
-
-          crimes.forEach(crime => {
-            if (crime.district_id) {
-              if (!districtMap.has(crime.district_id)) {
-                districtMap.set(crime.district_id, {
-                  count: 1,
-                  district: crime.districts,
-                  month: crime.month,
-                  year: crime.year
-                });
-              } else {
-                const entry = districtMap.get(crime.district_id);
-                entry.count += 1;
-              }
+        ; (map.getSource("crime-incidents") as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
+          clusterId,
+          (err, zoom) => {
+            if (err) {
+              console.error("Error getting cluster expansion zoom:", err)
+              return
             }
-          });
 
-          features = Array.from(districtMap.entries()).map(([districtId, data]) => {
-            const count = data.count;
-            totalCrimes += count;
+            const coordinates = (features[0].geometry as any).coordinates
 
-            return {
-              type: "Feature",
-              properties: {
-                district_id: districtId,
-                district_name: data.district ? data.district.name : "Unknown",
-                crime_count: count,
-                category: filterCategory !== "all" ? filterCategory : "All",
-                year: data.year,
-                month: data.month,
-                isCBT: true,
-                weight: count,
-              },
-              geometry: {
-                type: "Point",
-                coordinates: [
-                  data.district?.geographics?.[0]?.longitude || 0,
-                  data.district?.geographics?.[0]?.latitude || 0,
-                ],
-              },
-            } as GeoJSON.Feature;
-          }).filter(feature => feature.properties && feature.properties.crime_count > 0);
-        }
-
-        console.log(`Source type: ${sourceType}, total crimes: ${totalCrimes}, features: ${features.length}`);
+            map.flyTo({
+              center: coordinates,
+              zoom: zoom ?? 12,
+              bearing: 0,
+              pitch: 45,
+              duration: 1000,
+            })
+          },
+        )
       } catch (error) {
         console.error("Error handling cluster click:", error)
       }
@@ -161,73 +92,30 @@ export default function ClusterLayer({
 
         if (!map.getSource("crime-incidents")) {
           let features: GeoJSON.Feature[] = []
-          let clusterProps: any = undefined;
 
           if (sourceType === "cbu") {
-            // For CBU, we need to use weighted points based on crime_count
-            let totalCrimes = 0;
-
-            // First, extract actual features from districts
-            features = crimes.map(crime => {
-              // Only count crimes with valid month and year data
-              const crimeCount = (crime.month != null && crime.year != null) ? (crime.number_of_crime || 0) : 0;
-              totalCrimes += crimeCount;
-
-              return {
-                type: "Feature",
-                properties: {
-                  district_id: crime.district_id,
-                  district_name: crime.districts ? crime.districts.name : "Unknown",
-                  crime_count: crimeCount,
-                  level: crime.level,
-                  category: filterCategory !== "all" ? filterCategory : "All",
-                  year: crime.year,
-                  month: crime.month,
-                  isCBU: true,
-                  // Add weight for supercluster to use - this is crucial for accurate counts
-                  weight: crimeCount,
-                },
-                geometry: {
-                  type: "Point",
-                  coordinates: [
-                    crime.districts?.geographics?.[0]?.longitude || 0,
-                    crime.districts?.geographics?.[0]?.latitude || 0,
-                  ],
-                },
-              } as GeoJSON.Feature;
-            }).filter(feature => feature.properties &&
-              feature.properties.crime_count > 0 &&
-              feature.properties.year != null &&
-              feature.properties.month != null) as GeoJSON.Feature[];
-
-            console.log(`CBU total crimes: ${totalCrimes}, features: ${features.length}`);
-
-            // Set cluster properties for CBU - sums weight property
-            clusterProps = {
-              sum: ["+", ["coalesce", ["get", "weight"], 0]]
-            };
+            features = crimes.map(crime => ({
+              type: "Feature",
+              properties: {
+                district_id: crime.district_id,
+                district_name: crime.districts ? crime.districts.name : "Unknown",
+                crime_count: crime.number_of_crime || 0,
+                level: crime.level,
+                category: filterCategory !== "all" ? filterCategory : "All",
+                year: crime.year,
+                month: crime.month,
+                isCBU: true,
+              },
+              geometry: {
+                type: "Point",
+                coordinates: [
+                  crime.districts?.geographics?.[0]?.longitude || 0,
+                  crime.districts?.geographics?.[0]?.latitude || 0,
+                ],
+              },
+            })) as GeoJSON.Feature[]
           } else {
-            // For CBT, use extracted incidents but add weight property
-            features = extractCrimeIncidents(crimes, filterCategory).filter(Boolean) as GeoJSON.Feature[];
-
-            // Add weight property to each feature for CBT
-            features = features.map(feature => {
-              if (feature.properties) {
-                feature.properties.isCBT = true;
-                feature.properties.weight = 1; // Each incident counts as 1
-              }
-              return feature;
-            });
-
-            // Count total crimes for logging
-            const totalCrimes = features.length;
-            console.log(`CBT total crimes: ${totalCrimes}, features: ${features.length}`);
-
-            // For CBT we want to count the number of incidents (point_count)
-            clusterProps = {
-              // Also track a sum for display purposes if needed
-              incident_count: ["+", 1]
-            };
+            features = extractCrimeIncidents(crimes, filterCategory).filter(Boolean) as GeoJSON.Feature[]
           }
 
           map.addSource("crime-incidents", {
@@ -239,8 +127,7 @@ export default function ClusterLayer({
             cluster: clusteringEnabled,
             clusterMaxZoom: 14,
             clusterRadius: 50,
-            clusterProperties: clusterProps
-          });
+          })
 
           if (!map.getLayer("clusters")) {
             map.addLayer(
@@ -250,13 +137,8 @@ export default function ClusterLayer({
                 source: "crime-incidents",
                 filter: ["has", "point_count"],
                 paint: {
-                  // Use appropriate cluster property based on source type
-                  "circle-color": sourceType === "cbu"
-                    ? ["step", ["get", "sum"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"]
-                    : ["step", ["get", "point_count"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"],
-                  "circle-radius": sourceType === "cbu"
-                    ? ["step", ["get", "sum"], 20, 5, 30, 15, 40]
-                    : ["step", ["get", "point_count"], 20, 5, 30, 15, 40],
+                  "circle-color": ["step", ["get", "point_count"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"],
+                  "circle-radius": ["step", ["get", "point_count"], 20, 5, 30, 15, 40],
                   "circle-opacity": 0.75,
                 },
                 layout: {
@@ -274,8 +156,7 @@ export default function ClusterLayer({
               source: "crime-incidents",
               filter: ["has", "point_count"],
               layout: {
-                // For CBT, we use point_count directly, for CBU we use our custom sum
-                "text-field": sourceType === "cbu" ? "{sum}" : "{point_count}",
+                "text-field": "{point_count_abbreviated}",
                 "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
                 "text-size": 12,
                 visibility: showClusters && !focusedDistrictId ? "visible" : "none",
@@ -415,65 +296,30 @@ export default function ClusterLayer({
               map.removeSource("crime-incidents")
 
               let features: GeoJSON.Feature[] = []
-              let clusterProps: any = undefined;
 
               if (sourceType === "cbu") {
-                // For CBU, process the same as before
-                let totalCrimes = 0;
-
-                features = crimes.map(crime => {
-                  const crimeCount = (crime.month != null && crime.year != null) ? (crime.number_of_crime || 0) : 0;
-                  totalCrimes += crimeCount;
-
-                  return {
-                    type: "Feature",
-                    properties: {
-                      district_id: crime.district_id,
-                      district_name: crime.districts ? crime.districts.name : "Unknown",
-                      crime_count: crimeCount,
-                      level: crime.level,
-                      category: filterCategory !== "all" ? filterCategory : "All",
-                      year: crime.year,
-                      month: crime.month,
-                      isCBU: true,
-                      weight: crimeCount,
-                    },
-                    geometry: {
-                      type: "Point",
-                      coordinates: [
-                        crime.districts?.geographics?.[0]?.longitude || 0,
-                        crime.districts?.geographics?.[0]?.latitude || 0,
-                      ],
-                    },
-                  } as GeoJSON.Feature;
-                }).filter(feature => feature.properties &&
-                  feature.properties.crime_count > 0 &&
-                  feature.properties.year != null &&
-                  feature.properties.month != null) as GeoJSON.Feature[];
-
-                console.log(`CBU recreate - total crimes: ${totalCrimes}, features: ${features.length}`);
-
-                clusterProps = {
-                  sum: ["+", ["coalesce", ["get", "weight"], 0]]
-                };
+                features = crimes.map(crime => ({
+                  type: "Feature",
+                  properties: {
+                    district_id: crime.district_id,
+                    district_name: crime.districts ? crime.districts.name : "Unknown",
+                    crime_count: crime.number_of_crime || 0,
+                    level: crime.level,
+                    category: filterCategory !== "all" ? filterCategory : "All",
+                    year: crime.year,
+                    month: crime.month,
+                    isCBU: true,
+                  },
+                  geometry: {
+                    type: "Point",
+                    coordinates: [
+                      crime.districts?.geographics?.[0]?.longitude || 0,
+                      crime.districts?.geographics?.[0]?.latitude || 0,
+                    ],
+                  },
+                })) as GeoJSON.Feature[]
               } else {
-                // For CBT, update extraction but ensure we add weight property
-                features = extractCrimeIncidents(crimes, filterCategory)
-                  .filter(Boolean)
-                  .map(feature => {
-                    if (feature && feature.properties) {
-                      (feature.properties as any).isCBT = true;
-                      (feature.properties as any).weight = 1; // Each incident counts as 1
-                    }
-                    return feature;
-                  }) as GeoJSON.Feature[];
-
-                console.log(`CBT recreate - total features: ${features.length}`);
-                console.log(`CBT sample feature properties:`, features.length > 0 ? features[0].properties : 'No features');
-
-                clusterProps = {
-                  incident_count: ["+", 1]
-                };
+                features = extractCrimeIncidents(crimes, filterCategory).filter(Boolean) as GeoJSON.Feature[]
               }
 
               map.addSource("crime-incidents", {
@@ -485,8 +331,7 @@ export default function ClusterLayer({
                 cluster: clusteringEnabled,
                 clusterMaxZoom: 14,
                 clusterRadius: 50,
-                clusterProperties: clusterProps
-              });
+              })
 
               if (!map.getLayer("clusters")) {
                 map.addLayer(
@@ -496,13 +341,8 @@ export default function ClusterLayer({
                     source: "crime-incidents",
                     filter: ["has", "point_count"],
                     paint: {
-                      // Use appropriate properties based on source type
-                      "circle-color": sourceType === "cbu"
-                        ? ["step", ["get", "sum"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"]
-                        : ["step", ["get", "point_count"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"],
-                      "circle-radius": sourceType === "cbu"
-                        ? ["step", ["get", "sum"], 20, 5, 30, 15, 40]
-                        : ["step", ["get", "point_count"], 20, 5, 30, 15, 40],
+                      "circle-color": ["step", ["get", "point_count"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"],
+                      "circle-radius": ["step", ["get", "point_count"], 20, 5, 30, 15, 40],
                       "circle-opacity": 0.75,
                     },
                     layout: {
@@ -520,8 +360,7 @@ export default function ClusterLayer({
                   source: "crime-incidents",
                   filter: ["has", "point_count"],
                   layout: {
-                    // For CBT, use point_count directly, for CBU use our custom sum
-                    "text-field": sourceType === "cbu" ? "{sum}" : "{point_count}",
+                    "text-field": "{point_count_abbreviated}",
                     "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
                     "text-size": 12,
                     visibility: showClusters && !focusedDistrictId ? "visible" : "none",
@@ -750,56 +589,28 @@ export default function ClusterLayer({
       let features: GeoJSON.Feature[]
 
       if (sourceType === "cbu") {
-        // For CBU, update with weighted points
-        let totalCrimes = 0;
-
-        features = crimes.map(crime => {
-          // Only count crimes with valid month and year data
-          const crimeCount = (crime.month != null && crime.year != null) ? (crime.number_of_crime || 0) : 0;
-          totalCrimes += crimeCount;
-
-          return {
-            type: "Feature",
-            properties: {
-              district_id: crime.district_id,
-              district_name: crime.districts ? crime.districts.name : "Unknown",
-              crime_count: crimeCount,
-              level: crime.level,
-              category: filterCategory !== "all" ? filterCategory : "All",
-              year: crime.year,
-              month: crime.month,
-              isCBU: true,
-              // Ensure weight always correctly represents crime count
-              weight: crimeCount,
-            },
-            geometry: {
-              type: "Point",
-              coordinates: [
-                crime.districts?.geographics?.[0]?.longitude || 0,
-                crime.districts?.geographics?.[0]?.latitude || 0,
-              ],
-            },
-          } as GeoJSON.Feature;
-        }).filter(feature => feature.properties &&
-          feature.properties.crime_count > 0 &&
-          feature.properties.year != null &&
-          feature.properties.month != null) as GeoJSON.Feature[];
-
-        console.log(`CBU update - total crimes: ${totalCrimes}, features: ${features.length}`);
+        features = crimes.map(crime => ({
+          type: "Feature",
+          properties: {
+            district_id: crime.district_id,
+            district_name: crime.districts ? crime.districts.name : "Unknown",
+            crime_count: crime.number_of_crime || 0,
+            level: crime.level,
+            category: filterCategory !== "all" ? filterCategory : "All",
+            year: crime.year,
+            month: crime.month,
+            isCBU: true,
+          },
+          geometry: {
+            type: "Point",
+            coordinates: [
+              crime.districts?.geographics?.[0]?.longitude || 0,
+              crime.districts?.geographics?.[0]?.latitude || 0,
+            ],
+          },
+        })) as GeoJSON.Feature[]
       } else {
-        // For CBT, ensure we have weight properties
-        features = extractCrimeIncidents(crimes, filterCategory)
-          .filter(Boolean)
-          .map(feature => {
-            if (feature && feature.properties) {
-              // Use type assertion to safely add properties
-              (feature.properties as any).isCBT = true;
-              (feature.properties as any).weight = 1;
-            }
-            return feature;
-          }) as GeoJSON.Feature[];
-
-        console.log(`CBT update - features: ${features.length}`);
+        features = extractCrimeIncidents(crimes, filterCategory).filter(Boolean) as GeoJSON.Feature[]
       }
 
       ; (map.getSource("crime-incidents") as mapboxgl.GeoJSONSource).setData({

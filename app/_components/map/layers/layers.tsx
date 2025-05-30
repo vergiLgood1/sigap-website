@@ -13,7 +13,7 @@ import {
 } from "@/app/_utils/const/map";
 import DistrictPopup from "../pop-up/district-popup";
 import DistrictExtrusionLayer from "./district-extrusion-layer";
-import ClusterLayer from "./cluster-layer";
+import CBTClusterLayer from "./cbt-cluster-layer";
 import HeatmapLayer from "./heatmap-layer";
 import TimelineLayer from "./timeline-layer";
 
@@ -615,7 +615,7 @@ export default function Layers({
             />
 
             {sourceType === "cbt" ? (
-                <ClusterLayer
+                <CBTClusterLayer
                     visible={visible && activeControl === "clusters"}
                     map={mapboxMap}
                     crimes={crimes}
