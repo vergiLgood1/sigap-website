@@ -3,7 +3,6 @@
 import { getCrimeRateColor, getFillOpacity } from "@/app/_utils/map/common"
 import type { IExtrusionLayerProps } from "@/app/_utils/types/map"
 import { useEffect, useRef } from "react"
-import { manageLayerVisibility } from "@/app/_utils/map/layer-visibility"
 import { MAPBOX_SOURCE_LAYER, MAPBOX_SOURCE_NAME } from "@/app/_utils/const/map"
 
 export default function DistrictExtrusionLayer({
@@ -86,6 +85,10 @@ export default function DistrictExtrusionLayer({
                     "fill-extrusion-opacity": fillOpacity,
                 },
                 filter: ["==", ["get", "kode_kec"], focusedDistrictId || ""],
+                layout: {
+                    // Set initial visibility based on visible prop and focusedDistrictId
+                    visibility: (visible && focusedDistrictId) ? "visible" : "none"
+                }
             },
             firstSymbolId,
         )
@@ -94,20 +97,20 @@ export default function DistrictExtrusionLayer({
 
     // Handle extrusion layer creation and updates
     useEffect(() => {
-        if (!map || !visible) return
+        if (!map) return
 
         const onStyleLoad = () => {
             if (!map) return
             try {
                 createExtrusionLayer()
-                // Start animation if focusedDistrictId ada
-                if (focusedDistrictId) {
+                // Start animation if focusedDistrictId exists and layer is visible
+                if (focusedDistrictId && visible) {
                     lastFocusedDistrictRef.current = focusedDistrictId
-                    // setTimeout(() => {
+                    // Ensure the layer is visible
                     if (map.getLayer("district-extrusion")) {
+                        map.setLayoutProperty("district-extrusion", "visibility", "visible");
                         animateExtrusion()
                     }
-                    // }, 50)
                 }
             } catch (error) {
                 console.error("Error adding district extrusion layer:", error)
@@ -125,26 +128,47 @@ export default function DistrictExtrusionLayer({
                 cancelAnimationFrame(animationRef.current)
                 animationRef.current = null
             }
+            if (rotationAnimationRef.current) {
+                cancelAnimationFrame(rotationAnimationRef.current)
+                rotationAnimationRef.current = null
+            }
         }
-        // Tambahkan crimeDataByDistrict ke deps agar update color jika data berubah
     }, [map, visible, tilesetId, focusedDistrictId, crimeDataByDistrict])
 
-    // Update filter dan color ketika focusedDistrictId berubah
+    // Update visibility when props change
     useEffect(() => {
-        if (!map) return
+        if (!map || !map.getLayer("district-extrusion")) return;
 
-        // Jika layer belum ada, buat dulu
+        // Update visibility based on both visible prop and focusedDistrictId
+        const shouldBeVisible = visible && !!focusedDistrictId;
+
+        try {
+            map.setLayoutProperty(
+                "district-extrusion",
+                "visibility",
+                shouldBeVisible ? "visible" : "none"
+            );
+        } catch (error) {
+            console.error("Error updating district extrusion visibility:", error);
+        }
+    }, [map, visible, focusedDistrictId]);
+
+    // Update filter and color when focusedDistrictId changes
+    useEffect(() => {
+        if (!map || !visible) return
+
+        // If layer doesn't exist, create it first
         if (!map.getLayer("district-extrusion")) {
             createExtrusionLayer()
         }
 
-        // Tunggu layer benar-benar ada
+        // Wait until layer really exists
         if (!map.getLayer("district-extrusion")) return
 
         // Skip unnecessary updates if nothing has changed
         if (lastFocusedDistrictRef.current === focusedDistrictId) return
 
-        // Jika unfocus
+        // If unfocusing
         if (!focusedDistrictId) {
             if (rotationAnimationRef.current) {
                 cancelAnimationFrame(rotationAnimationRef.current)
@@ -186,6 +210,7 @@ export default function DistrictExtrusionLayer({
                             map.setFilter("district-extrusion", ["==", ["get", "kode_kec"], ""])
                             lastFocusedDistrictRef.current = null
                             map.setBearing(0)
+                            map.setLayoutProperty("district-extrusion", "visibility", "none")
                         }
                     } catch (error) {
                         if (animationRef.current) {
@@ -206,7 +231,7 @@ export default function DistrictExtrusionLayer({
         }
 
         try {
-            // Update filter dan color
+            // Update filter and color
             map.setFilter("district-extrusion", ["==", ["get", "kode_kec"], focusedDistrictId])
             map.setPaintProperty("district-extrusion", "fill-extrusion-color", [
                 "case",
@@ -227,6 +252,9 @@ export default function DistrictExtrusionLayer({
                 0,
             ])
 
+            // Make sure the layer is visible if we have a focusedDistrictId
+            map.setLayoutProperty("district-extrusion", "visibility", "visible")
+
             lastFocusedDistrictRef.current = focusedDistrictId
 
             if (rotationAnimationRef.current) {
@@ -238,15 +266,18 @@ export default function DistrictExtrusionLayer({
                 animationRef.current = null
             }
 
-            setTimeout(() => {
-                if (map.getLayer("district-extrusion")) {
-                    animateExtrusion()
-                }
-            }, 50)
+            // Only animate if the component is visible
+            if (visible) {
+                setTimeout(() => {
+                    if (map.getLayer("district-extrusion")) {
+                        animateExtrusion()
+                    }
+                }, 50)
+            }
         } catch (error) {
             console.error("Error updating district extrusion:", error)
         }
-    }, [map, focusedDistrictId, crimeDataByDistrict])
+    }, [map, focusedDistrictId, crimeDataByDistrict, visible])
 
     // Cleanup on unmount
     useEffect(() => {
@@ -264,7 +295,7 @@ export default function DistrictExtrusionLayer({
 
     // Animate extrusion height
     const animateExtrusion = () => {
-        if (!map || !map.getLayer("district-extrusion") || !focusedDistrictId) {
+        if (!map || !map.getLayer("district-extrusion") || !focusedDistrictId || !visible) {
             return
         }
 
@@ -310,13 +341,13 @@ export default function DistrictExtrusionLayer({
 
     // Start rotation animation
     const startRotation = () => {
-        if (!map || !focusedDistrictId) return
+        if (!map || !focusedDistrictId || !visible) return
 
         const rotationSpeed = 0.05 // degrees per frame
         bearingRef.current = 0
 
         const animate = () => {
-            if (!map || !focusedDistrictId || focusedDistrictId !== lastFocusedDistrictRef.current) {
+            if (!map || !focusedDistrictId || focusedDistrictId !== lastFocusedDistrictRef.current || !visible) {
                 if (rotationAnimationRef.current) {
                     cancelAnimationFrame(rotationAnimationRef.current)
                     rotationAnimationRef.current = null
@@ -342,24 +373,6 @@ export default function DistrictExtrusionLayer({
         }
         rotationAnimationRef.current = requestAnimationFrame(animate)
     }
-
-    // Use centralized layer visibility management
-    useEffect(() => {
-        if (!map) return;
-
-        // Special case: also cancel animations when hiding the layer
-        return manageLayerVisibility(map, LAYER_IDS, visible && !!focusedDistrictId, () => {
-            if (!visible && animationRef.current) {
-                cancelAnimationFrame(animationRef.current);
-                animationRef.current = null;
-            }
-
-            if (!visible && rotationAnimationRef.current) {
-                cancelAnimationFrame(rotationAnimationRef.current);
-                rotationAnimationRef.current = null;
-            }
-        });
-    }, [map, visible, focusedDistrictId]);
 
     return null
 }
