@@ -1,49 +1,57 @@
 import type mapboxgl from "mapbox-gl"
 
 /**
- * Manages layer visibility based on provided condition
+ * Centralized utility for managing layer visibility in Mapbox
  * 
- * @param map - MapboxGL map instance
- * @param layerIds - Array of layer IDs to manage
- * @param visible - Whether layers should be visible
+ * @param map The Mapbox map instance
+ * @param layerIds Array of layer IDs to manage
+ * @param isVisible Whether the layers should be visible
+ * @param onComplete Optional callback to run after visibility is set
+ * @returns Cleanup function
  */
-export function manageLayerVisibility(
-    map: mapboxgl.Map | null | undefined,
+export const manageLayerVisibility = (
+    map: mapboxgl.Map,
     layerIds: string[],
-    visible: boolean
-) {
-    if (!map) return;
+    isVisible: boolean,
+    onComplete?: () => void
+): (() => void) => {
+    // Check if map is available
+    if (!map) return () => { }
 
-    const visibilityValue: 'visible' | 'none' = visible ? 'visible' : 'none';
-
-    // Check if style is loaded before attempting to change layer visibility
-    if (!map.isStyleLoaded()) {
-        // console.warn('Map style not yet loaded while trying to change layer visibility');
-
-        // Try again after a short delay
-        setTimeout(() => {
-            if (map && map.isStyleLoaded()) {
-                setLayersVisibility(map, layerIds, visibilityValue);
-            }
-        }, 100);
-        return;
-    }
-
-    setLayersVisibility(map, layerIds, visibilityValue);
-}
-
-function setLayersVisibility(map: mapboxgl.Map, layerIds: string[], visibilityValue: 'visible' | 'none') {
+    // Set visibility for each layer
     layerIds.forEach(layerId => {
         try {
-            // Check if the layer exists first before trying to change its visibility
             if (map.getLayer(layerId)) {
-                map.setLayoutProperty(layerId, 'visibility', visibilityValue);
-                // console.log(`Set ${layerId} visibility to ${visibilityValue}`);
-            } else {
-                // console.log(`Layer ${layerId} not found on map`);
+                map.setLayoutProperty(
+                    layerId,
+                    'visibility',
+                    isVisible ? 'visible' : 'none'
+                )
             }
+    } catch (error) {
+        console.warn(`Failed to set visibility for layer ${layerId}:`, error)
+    }
+  })
+
+    // Execute callback if provided
+    if (onComplete) {
+        onComplete()
+    }
+
+    // Return cleanup function
+    return () => {
+        if (!map) return
+        // Hide layers on cleanup if needed
+        if (isVisible) {
+            layerIds.forEach(layerId => {
+          try {
+            if (map.getLayer(layerId)) {
+              map.setLayoutProperty(layerId, 'visibility', 'none')
+          }
         } catch (error) {
-            console.warn(`Error setting ${layerId} visibility to ${visibilityValue}:`, error);
+            // Ignore cleanup errors
         }
-    });
+      })
+      }
+  }
 }

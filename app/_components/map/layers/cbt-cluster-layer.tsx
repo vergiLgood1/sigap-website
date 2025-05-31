@@ -378,14 +378,25 @@ export default function CBTClusterLayer({
     if (!map || !mapReady) return;
 
     const isActive = visible && showClusters && sourceType === 'cbt';
-    console.log(`CBT Layer: Setting visibility to ${isActive ? 'visible' : 'hidden'} (sourceType=${sourceType})`);
 
     try {
-      manageLayerVisibility(map, layerIds, isActive);
+      // Force immediate visibility update based on current state
+      layerIds.forEach(layerId => {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(
+            layerId,
+            'visibility',
+            isActive ? 'visible' : 'none'
+          );
+        }
+      });
+
+      // Log visibility change for debugging
+      console.log(`CBT Layer: Set visibility to ${isActive ? 'visible' : 'hidden'} (sourceType=${sourceType})`);
     } catch (error) {
       console.error("Error updating CBT layer visibility:", error);
     }
-  }, [map, mapReady, visible, showClusters, sourceType]);
+  }, [map, mapReady, visible, showClusters, sourceType, layerIds]);
 
   return (
     <>

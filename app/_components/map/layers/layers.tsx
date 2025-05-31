@@ -507,67 +507,41 @@ export default function Layers({
             "all-incidents-circles",
             "all-incidents",
         ];
+        // Add explicit CBT and CBU layer IDs
+        const cbtLayerIds = ['cbt-clusters', 'cbt-cluster-count', 'cbt-unclustered-point'];
+        const cbuLayerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-unclustered-point', 'cbu-unclustered-count'];
 
-        // Hide layers that don't match the current active control
-        if (activeControl !== "recents") {
-            manageLayerVisibility(mapboxMap, recentLayerIds, false);
-        }
+        // Define a single function to hide all layers except the active one
+        const showOnlyActiveLayers = () => {
+            // First, hide all layers by default
+            manageLayerVisibility(mapboxMap, recentLayerIds, activeControl === "recents");
+            manageLayerVisibility(mapboxMap, timelineLayerIds, activeControl === "timeline");
+            manageLayerVisibility(mapboxMap, heatmapLayerIds, activeControl === "heatmap");
+            manageLayerVisibility(mapboxMap, unitsLayerIds, activeControl === "units");
+            manageLayerVisibility(mapboxMap, allIncidentsLayerIds, activeControl === "incidents");
 
-        if (activeControl !== "timeline") {
-            manageLayerVisibility(mapboxMap, timelineLayerIds, false);
-        }
+            // Handle cluster layers based on active control AND source type
+            if (activeControl === "clusters") {
+                // Only show CBT clusters if sourceType is "cbt"
+                manageLayerVisibility(mapboxMap, cbtLayerIds, sourceType === "cbt");
 
-        if (activeControl !== "heatmap") {
-            manageLayerVisibility(mapboxMap, heatmapLayerIds, false);
-        }
-
-        if (activeControl !== "units") {
-            manageLayerVisibility(mapboxMap, unitsLayerIds, false);
-        }
-
-        // Hide incidents layer when switching to other layers
-        if (activeControl !== "incidents") {
-            manageLayerVisibility(mapboxMap, allIncidentsLayerIds, false);
-        }
-
-        // When source type changes, trigger a refresh
-        if (sourceType === "cbt") {
-            // console.log("Setting CBU layers to hidden and CBT layers to visible");
-            const cbuLayerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-unclustered-point', 'cbu-unclustered-count'];
-            manageLayerVisibility(mapboxMap, cbuLayerIds, false);
-        } else {
-            // console.log("Setting CBT layers to hidden and CBU layers to visible");
-            const cbtLayerIds = ['cbt-clusters', 'cbt-cluster-count', 'cbt-unclustered-point'];
-            manageLayerVisibility(mapboxMap, cbtLayerIds, false);
-        }
-
-    }, [activeControl, sourceType, mapboxMap]);
-
-    // Track previous source type to detect changes
-    const prevSourceTypeRef = useRef<ICrimeSourceTypes>(sourceType);
-
-    // Add effect to handle source type changes specifically
-    useEffect(() => {
-        if (!mapboxMap) return;
-
-        // Check if source type has changed
-        if (prevSourceTypeRef.current !== sourceType) {
-            // console.log(`Source type changed from ${prevSourceTypeRef.current} to ${sourceType}`);
-
-            // Hide layers for the previous source type first
-            if (prevSourceTypeRef.current === "cbt") {
-                const cbtLayerIds = ['cbt-clusters', 'cbt-cluster-count', 'cbt-unclustered-point'];
-                manageLayerVisibility(mapboxMap, cbtLayerIds, false);
+                // Only show CBU clusters if sourceType is "cbu" 
+                manageLayerVisibility(mapboxMap, cbuLayerIds, sourceType === "cbu");
             } else {
-                const cbuLayerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-unclustered-point', 'cbu-unclustered-count'];
+                // If not in clusters mode, hide all cluster layers
+                manageLayerVisibility(mapboxMap, cbtLayerIds, false);
                 manageLayerVisibility(mapboxMap, cbuLayerIds, false);
             }
+        };
 
-            // Update the ref with the current source type
-            prevSourceTypeRef.current = sourceType;
-        }
+        // Execute immediately
+        showOnlyActiveLayers();
 
-    }, [mapboxMap, sourceType]);
+        // Return cleanup function
+        return () => {
+            // No need for cleanup as each call to manageLayerVisibility properly handles its own state
+        };
+    }, [activeControl, sourceType, mapboxMap]);
 
     return (
         <>
