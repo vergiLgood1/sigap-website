@@ -472,8 +472,12 @@ export default function Layers({
     const showUnitsLayer = activeControl === "units";
     const showTimelineLayer = activeControl === "timeline";
     const showRecentIncidents = activeControl === "recents";
-    const showAllIncidents = activeControl === "incidents"; // Use the "incidents" tooltip for all incidents
+    const showAllIncidents = activeControl === "incidents";
     const showDistrictFill = activeControl === "clusters";
+
+    // Show clusters based on source type and active control
+    const showCBTClusters = activeControl === "clusters" && sourceType === "cbt";
+    const showCBUClusters = activeControl === "clusters" && sourceType === "cbu";
 
     const showIncidentMarkers = activeControl !== "heatmap" &&
         activeControl !== "timeline" && sourceType !== "cbu";
@@ -497,19 +501,13 @@ export default function Layers({
             "units-labels",
             "units-connection-lines",
         ];
-        const clusterLayerIds = [
-            "clusters",
-            "cluster-count",
-            "crime-points",
-            "crime-count-labels",
-        ];
-
         const allIncidentsLayerIds = [
             "all-incidents-pulse",
             "all-incidents-circles",
             "all-incidents",
         ];
-        // First, hide all layers that don't match the current active control
+
+        // Hide layers that don't match the current active control
         if (activeControl !== "recents") {
             manageLayerVisibility(mapboxMap, recentLayerIds, false);
         }
@@ -526,23 +524,23 @@ export default function Layers({
             manageLayerVisibility(mapboxMap, unitsLayerIds, false);
         }
 
-        if (activeControl !== "clusters") {
-            manageLayerVisibility(mapboxMap, clusterLayerIds, false);
-        }
-
-        // Important fix: Ensure incidents layer is hidden when switching to other layers
+        // Hide incidents layer when switching to other layers
         if (activeControl !== "incidents") {
             manageLayerVisibility(mapboxMap, allIncidentsLayerIds, false);
         }
 
-        // Clean up function to ensure proper removal of event listeners
-        return () => {
-            // When component unmounts, ensure all layers are properly cleaned up
-            if (mapboxMap) {
-                // Handle any specific cleanup needed
-            }
-        };
-    }, [activeControl, mapboxMap]);
+        // When source type changes, trigger a refresh by setting a timeout
+        if (sourceType === "cbt") {
+            console.log("Source type is CBT - ensuring CBU layers are hidden");
+            const cbuLayerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-crime-points', 'cbu-crime-count-labels'];
+            manageLayerVisibility(mapboxMap, cbuLayerIds, false);
+        } else {
+            console.log("Source type is CBU - ensuring CBT layers are hidden");
+            const cbtLayerIds = ['cbt-clusters', 'cbt-cluster-count'];
+            manageLayerVisibility(mapboxMap, cbtLayerIds, false);
+        }
+
+    }, [activeControl, sourceType, mapboxMap]);
 
     return (
         <>
@@ -614,28 +612,32 @@ export default function Layers({
                 map={mapboxMap}
             />
 
-            {sourceType === "cbt" ? (
-                <CBTClusterLayer
-                    visible={visible && activeControl === "clusters"}
-                    map={mapboxMap}
-                    crimes={crimes}
-                    filterCategory={filterCategory}
-                    focusedDistrictId={focusedDistrictId}
-                    clusteringEnabled={activeControl === "clusters"}
-                    showClusters={activeControl === "clusters"}
+            {/* Always render both cluster layers but with proper visibility control */}
+            <CBTClusterLayer
+                visible={showCBTClusters}
+                map={mapboxMap}
+                crimes={crimes}
+                filterCategory={filterCategory}
+                focusedDistrictId={focusedDistrictId}
+                clusteringEnabled={true}
+                showClusters={showCBTClusters}
+                sourceType={sourceType}
+                year={year}
+                month={month}
+            />
 
-                />
-            ) : (
-                <CBUClusterLayer
-                    visible={visible && activeControl === "clusters"}
-                    map={mapboxMap}
-                    crimes={crimes}
-                    filterCategory={filterCategory}
-                    focusedDistrictId={focusedDistrictId}
-                    clusteringEnabled={activeControl === "clusters"}
-                    showClusters={activeControl === "clusters"}
-                />
-            )}
+            <CBUClusterLayer
+                visible={showCBUClusters}
+                map={mapboxMap}
+                crimes={crimes}
+                filterCategory={filterCategory}
+                focusedDistrictId={focusedDistrictId}
+                clusteringEnabled={true}
+                showClusters={showCBUClusters}
+                sourceType={sourceType}
+                year={year}
+                month={month}
+            />
 
             {selectedDistrict && !selectedIncident &&
                 !isInteractingWithMarker.current && (

@@ -496,61 +496,6 @@ model location_logs {
   @@index([user_id], map: "idx_location_logs_user_id")
 }
 
-model district_clusters {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  district_id String      @db.VarChar(20)
-  year        Int
-  month       Int?
-  risk_level  crime_rates @default(low)
-
-  // Clustering Variables
-  total_crimes       Int   @default(0)
-  population_density Float @default(0)
-  unemployment_rate  Float @default(0)
-
-  // Normalized Scores
-  crime_score        Float @default(0)
-  density_score      Float @default(0)
-  unemployment_score Float @default(0)
-
-  // Clustering Metadata
-  cluster_score     Float   @default(0)
-  centroid_features Json?
-  member_count      Int     @default(0)
-  last_update_type  String  @default("batch")
-  update_count      Int     @default(0)
-  needs_recompute   Boolean @default(false)
-
-  // Migration tracking
-  migrated_to_crimes Boolean   @default(false)
-  migration_date     DateTime?
-
-  // Relation to crime incidents
-  incidents_data Json? // Will store crime incident details as JSON
-
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @updatedAt @db.Timestamptz(6)
-
-  district districts @relation(fields: [district_id], references: [id])
-
-  @@unique([district_id, year, month])
-  @@index([district_id])
-  @@index([risk_level])
-  @@index([migrated_to_crimes])
-}
-
-model cluster_updates {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  district_id String   @db.VarChar(20)
-  update_type String
-  old_value   Json
-  new_value   Json
-  timestamp   DateTime @default(now()) @db.Timestamptz(6)
-  processed   Boolean  @default(false)
-
-  @@index([district_id, processed])
-}
-
 enum patrol_unit_category {
   individual
   group
@@ -588,4 +533,48 @@ enum unit_type {
   polsek
   polres
   other
+}
+
+model district_clusters {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  district_id        String      @db.VarChar(20)
+  year               Int
+  month              Int?
+  risk_level         crime_rates @default(low)
+  total_crimes       Int         @default(0)
+  population_density Float       @default(0)
+  unemployment_rate  Float       @default(0)
+  crime_score        Float       @default(0)
+  density_score      Float       @default(0)
+  unemployment_score Float       @default(0)
+  cluster_score      Float       @default(0)
+  centroid_features  Json?
+  member_count       Int         @default(1)
+  last_update_type   String      @default("batch") @db.VarChar(20)
+  update_count       Int         @default(0)
+  needs_recompute    Boolean     @default(false)
+  incidents_data     Json?
+  created_at         DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime    @default(now()) @db.Timestamptz(6)
+  district           districts   @relation(fields: [district_id], references: [id], onDelete: Cascade)
+
+  @@unique([district_id, year, month])
+  @@index([year, month])
+  @@index([risk_level])
+  @@index([needs_recompute])
+  @@index([last_update_type])
+}
+
+model cluster_updates {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  district_id String   @db.VarChar(20)
+  update_type String   @db.VarChar(20)
+  old_value   Json?
+  new_value   Json?
+  processed   Boolean  @default(false)
+  timestamp   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([processed])
+  @@index([timestamp])
+  @@index([district_id])
 }

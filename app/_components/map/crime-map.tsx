@@ -536,6 +536,9 @@ export default function CrimeMap() {
                                                             <TimelineLegend position="bottom-right" />
                                                         </div>
                                                     )}
+
+                                                    <TestClustering />
+
                                                 </>
                                             )}
 
@@ -549,7 +552,6 @@ export default function CrimeMap() {
                                                 />
                                             </div>
 
-                                            <TestClustering />
 
                                         </MapView>
                                     </div>

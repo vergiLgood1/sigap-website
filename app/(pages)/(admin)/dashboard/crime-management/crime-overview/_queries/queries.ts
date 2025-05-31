@@ -17,6 +17,10 @@ import {
   performKMeansClustering,
   getDistrictClusters,
   processIncidentLogsForClustering,
+  getRealtimeClusterData,
+  initializeCurrentYearClusters,
+  triggerIncrementalUpdate,
+  markDistrictForUpdate,
 } from '../action';
 
 export const useGetAvailableYears = () => {
@@ -152,5 +156,38 @@ export const useProcessIncidentLogs = (
     queryKey: ['process-incident-logs', year, month],
     queryFn: () => processIncidentLogsForClustering(year, month),
     enabled: false, // Don't run automatically
+  });
+};
+
+export const useGetRealtimeClusterData = (year: number = new Date().getFullYear()) => {
+  return useQuery({
+    queryKey: ['realtime-cluster-data', year],
+    queryFn: () => getRealtimeClusterData(year),
+    refetchInterval: 30000, // Refetch every 30 seconds as fallback
+    staleTime: 10000, // Consider data stale after 10 seconds
+  });
+};
+
+export const useInitializeCurrentYearClusters = () => {
+  return useQuery({
+    queryKey: ['initialize-current-year-clusters'],
+    queryFn: () => initializeCurrentYearClusters(),
+    enabled: false, // Only run when explicitly called
+  });
+};
+
+export const useTriggerIncrementalUpdate = (districtId: string, year?: number) => {
+  return useQuery({
+    queryKey: ['trigger-incremental-update', districtId, year],
+    queryFn: () => triggerIncrementalUpdate(districtId, year),
+    enabled: false, // Only run when explicitly called
+  });
+};
+
+export const useMarkDistrictForUpdate = (districtId?: string, year?: number) => {
+  return useQuery({
+    queryKey: ['mark-district-update', districtId, year],
+    queryFn: () => districtId ? markDistrictForUpdate(districtId, year) : Promise.resolve(null),
+    enabled: false, // Only run when explicitly called
   });
 };

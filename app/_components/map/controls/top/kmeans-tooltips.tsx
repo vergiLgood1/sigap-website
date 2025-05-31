@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import type { ITooltipsControl } from "./tooltips"
 import KMeansDialog from "../../pop-up/kmeans-dialog"
 import { useGetKMeansClustering } from "@/app/(pages)/(admin)/dashboard/crime-management/crime-overview/_queries/queries"
+import { useRealtimeKMeans } from "@/app/_hooks/use-realtime-kmeans"
 
 const kmeansTooltips = [
     {
@@ -55,6 +56,27 @@ export default function KMeansTooltips({
         { enabled: false }
     )
 
+    // Add real-time K-means hook
+    const {
+        isConnected: isRealtimeConnected,
+        isRealTimeEnabled,
+        lastUpdate,
+        refreshClusters
+    } = useRealtimeKMeans({
+        enabled: sourceType === "cbt" && isCurrentYear,
+        year: selectedYear,
+        onClusterUpdate: (clusters) => {
+            console.log("Real-time cluster update received:", clusters.length, "clusters");
+            // Trigger map layer refresh if needed
+            if (onControlChange) {
+                onControlChange("refresh");
+            }
+        },
+        onError: (error) => {
+            console.error("Real-time K-means error:", error);
+        }
+    });
+
     // Reset dialog state when activeControl changes
     useEffect(() => {
         if (!activeControl?.includes('incremental') && !activeControl?.includes('batch')) {
@@ -91,6 +113,11 @@ export default function KMeansTooltips({
             // Perform K-means clustering
             await performKMeans()
 
+            // Refresh real-time data
+            if (isRealTimeEnabled) {
+                await refreshClusters()
+            }
+
             // Trigger refetch of K-means data without changing layer
             if (onControlChange) {
                 // Trigger a temporary state change to force refetch
@@ -121,14 +148,26 @@ export default function KMeansTooltips({
     return (
         <>
             <div className="z-10 bg-background rounded-md p-1 flex items-center space-x-1">
+                {/* Real-time indicator */}
+                {/* {isRealTimeEnabled && (
+                    <div className={`h-2 w-2 rounded-full ${isRealtimeConnected ? 'bg-green-500' : 'bg-red-500'
+                        } animate-pulse`}
+                        title={isRealtimeConnected ? 'Real-time connected' : 'Real-time disconnected'}
+                    />
+                )} */}
+
                 <TooltipProvider>
                     {kmeansTooltips.map((control) => {
                         const isButtonDisabled = isDisabled(control.id)
-                        const tooltipText = isButtonDisabled
-                            ? control.id === "incremental" && !isCurrentYear
+                        let tooltipText = control.label
+
+                        if (isButtonDisabled) {
+                            tooltipText = control.id === "incremental" && !isCurrentYear
                                 ? "Incremental updates only available for current year data"
                                 : "Not available for this data type"
-                            : control.label
+                        } else if (control.id === "incremental" && isRealTimeEnabled) {
+                            tooltipText += " (Real-time enabled)"
+                        }
 
                         return (
                             <Tooltip key={control.id}>
@@ -150,6 +189,11 @@ export default function KMeansTooltips({
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom">
                                     <p>{tooltipText}</p>
+                                    {lastUpdate && isRealTimeEnabled && (
+                                        <p className="text-xs text-gray-400">
+                                            Last update: {lastUpdate.toLocaleTimeString()}
+                                        </p>
+                                    )}
                                 </TooltipContent>
                             </Tooltip>
                         )

@@ -1241,3 +1241,296 @@ export async function processIncidentLogsForClustering(
     }
   );
 }
+
+// export async function markDistrictForUpdate(districtId: string, year: number = new Date().getFullYear()) {
+//   const instrumentationService = getInjection("IInstrumentationService");
+//   return await instrumentationService.instrumentServerAction(
+//     "Mark District for Update",
+//     { recordResponse: true },
+//     async () => {
+//       try {
+//         const currentYear = new Date().getFullYear();
+
+//         // SAFETY: Only allow marking districts in current year
+//         if (year !== currentYear) {
+//           throw new Error(`🔒 SAFETY: Cannot mark districts for update in historical year ${year}. Only current year ${currentYear} is allowed.`);
+//         }
+
+//         console.log(`✅ Safety check passed: Marking district ${districtId} for year ${year} (current year)`);
+
+//         // Increment update count for the district
+//         await db.district_clusters.updateMany({
+//           where: {
+//             district_id: districtId,
+//             year: currentYear, // Force current year
+//             month: null
+//           },
+//           data: {
+//             update_count: {
+//               increment: 1
+//             },
+//             needs_recompute: true,
+//             updated_at: new Date()
+//           }
+//         });
+
+//         // Check if cluster exists
+//         const clusterExists = await db.district_clusters.findFirst({
+//           where: {
+//             district_id: districtId,
+//             year: currentYear, // Force current year
+//             month: null
+//           },
+//         });
+
+//         if (!clusterExists) {
+//           throw new Error(`District cluster for district ${districtId} and year ${currentYear} does not exist`);
+//         }
+
+//         // Check if threshold is exceeded
+//         const cluster = await db.district_clusters.findFirst({
+//           where: {
+//             district_id: districtId,
+//             year: currentYear, // Force current year
+//             month: null
+//           },
+//           select: {
+//             update_count: true
+//           }
+//         });
+
+//         const shouldTriggerUpdate = (cluster?.update_count || 0) >= 3;
+
+//         if (shouldTriggerUpdate) {
+//           // Trigger incremental update
+//           await triggerIncrementalUpdate(districtId, currentYear); // Force current year
+//         }
+
+//         return {
+//           marked: true,
+//           update_count: cluster?.update_count || 0,
+//           triggered_update: shouldTriggerUpdate,
+//           year: currentYear, // Include year in response for verification
+//           safety_note: `Operation completed safely for current year ${currentYear}`
+//         };
+//       } catch (err) {
+//         const crashReporterService = getInjection("ICrashReporterService");
+//         crashReporterService.report(err);
+//         throw new Error("Failed to mark district for update");
+//       }
+//     }
+//   );
+// }
+
+export async function triggerIncrementalUpdate(
+  districtId: string,
+  year: number = new Date().getFullYear()
+) {
+  const instrumentationService = getInjection("IInstrumentationService");
+  return await instrumentationService.instrumentServerAction(
+    "Trigger Incremental Update",
+    { recordResponse: true },
+    async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+
+        // SAFETY: Only allow incremental updates for current year
+        if (year !== currentYear) {
+          throw new Error(`🔒 SAFETY: Cannot trigger incremental updates for historical year ${year}. Only current year ${currentYear} is allowed.`);
+        }
+
+        console.log(`✅ Safety check passed: Triggering incremental update for district ${districtId} in year ${year} (current year)`);
+
+        const kmeansService = new KMeansService();
+
+        // Check if incremental update is needed
+        const needsUpdate = await kmeansService.needsRecompute(5);
+
+        if (needsUpdate) {
+          // Perform full recomputation if threshold exceeded
+          console.log("Threshold exceeded, performing full recomputation for current year");
+          return await kmeansService.performClustering(currentYear); // Force current year
+        } else {
+          // Perform incremental update
+          console.log("Performing incremental update for district:", districtId);
+          return await kmeansService.performIncrementalUpdate(currentYear); // Force current year
+        }
+      } catch (err) {
+        const crashReporterService = getInjection("ICrashReporterService");
+        crashReporterService.report(err);
+        throw new Error("Failed to trigger incremental update");
+      }
+    }
+  );
+}
+
+export async function initializeCurrentYearClusters() {
+  const instrumentationService = getInjection("IInstrumentationService");
+  return await instrumentationService.instrumentServerAction(
+    "Initialize Current Year Clusters",
+    { recordResponse: true },
+    async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+        const kmeansService = new KMeansService();
+
+        // Check if current year clusters exist
+        const existingClusters = await db.district_clusters.count({
+          where: {
+            year: currentYear,
+            month: null
+          }
+        });
+
+        if (existingClusters === 0) {
+          console.log("Initializing clusters for current year:", currentYear);
+          return await kmeansService.performClustering(currentYear);
+        }
+
+        return { message: "Clusters already exist for current year" };
+      } catch (err) {
+        const crashReporterService = getInjection("ICrashReporterService");
+        crashReporterService.report(err);
+        throw new Error("Failed to initialize current year clusters");
+      }
+    }
+  );
+}
+
+export async function getRealtimeClusterData(year: number = new Date().getFullYear()) {
+  const instrumentationService = getInjection("IInstrumentationService");
+  return await instrumentationService.instrumentServerAction(
+    "Get Realtime Cluster Data",
+    { recordResponse: true },
+    async () => {
+      try {
+        const clusters = await db.district_clusters.findMany({
+          where: {
+            year,
+            month: null
+          },
+          include: {
+            district: {
+              select: {
+                name: true,
+                geographics: {
+                  select: {
+                    latitude: true,
+                    longitude: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: {
+            updated_at: 'desc'
+          }
+        });
+
+        return clusters.map(cluster => ({
+          id: cluster.id,
+          district_id: cluster.district_id,
+          district_name: cluster.district.name,
+          year: cluster.year,
+          month: cluster.month,
+          risk_level: cluster.risk_level,
+          total_crimes: cluster.total_crimes,
+          cluster_score: cluster.cluster_score,
+          crime_score: cluster.crime_score,
+          density_score: cluster.density_score,
+          unemployment_score: cluster.unemployment_score,
+          last_update_type: cluster.last_update_type,
+          update_count: cluster.update_count,
+          needs_recompute: cluster.needs_recompute,
+          updated_at: cluster.updated_at.toISOString(), // Convert Date to string
+          location: cluster.district.geographics[0] || null
+        }));
+      } catch (err) {
+        const crashReporterService = getInjection("ICrashReporterService");
+        crashReporterService.report(err);
+        throw new Error("Failed to fetch realtime cluster data");
+      }
+    }
+  );
+}
+
+export async function markDistrictForUpdate(districtId: string, year: number = new Date().getFullYear()) {
+  const instrumentationService = getInjection("IInstrumentationService");
+  return await instrumentationService.instrumentServerAction(
+    "Mark District for Update",
+    { recordResponse: true },
+    async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+
+        // SAFETY: Only allow marking districts in current year
+        if (year !== currentYear) {
+          throw new Error(`🔒 SAFETY: Cannot mark districts for update in historical year ${year}. Only current year ${currentYear} is allowed.`);
+        }
+
+        console.log(`✅ Safety check passed: Marking district ${districtId} for year ${year} (current year)`);
+
+        // Increment update count for the district
+        await db.district_clusters.updateMany({
+          where: {
+            district_id: districtId,
+            year: currentYear, // Force current year
+            month: null
+          },
+          data: {
+            update_count: {
+              increment: 1
+            },
+            needs_recompute: true,
+            updated_at: new Date()
+          }
+        });
+
+        // Check if cluster exists
+        const clusterExists = await db.district_clusters.findFirst({
+          where: {
+            district_id: districtId,
+            year: currentYear, // Force current year
+            month: null
+          },
+        });
+
+        if (!clusterExists) {
+          throw new Error(`District cluster for district ${districtId} and year ${currentYear} does not exist`);
+        }
+
+        // Check if threshold is exceeded
+        const cluster = await db.district_clusters.findFirst({
+          where: {
+            district_id: districtId,
+            year: currentYear, // Force current year
+            month: null
+          },
+          select: {
+            update_count: true
+          }
+        });
+
+        const shouldTriggerUpdate = (cluster?.update_count || 0) >= 3;
+
+        if (shouldTriggerUpdate) {
+          // Trigger incremental update
+          await triggerIncrementalUpdate(districtId, currentYear); // Force current year
+        }
+
+        return {
+          marked: true,
+          update_count: cluster?.update_count || 0,
+          triggered_update: shouldTriggerUpdate,
+          year: currentYear, // Include year in response for verification
+          safety_note: `Operation completed safely for current year ${currentYear}`
+        };
+      } catch (err) {
+        const crashReporterService = getInjection("ICrashReporterService");
+        crashReporterService.report(err);
+        console.error("Error marking district for update:", err);
+        throw new Error("Failed to mark district for update");
+      }
+    }
+  );
+}

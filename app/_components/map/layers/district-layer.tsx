@@ -4,6 +4,7 @@ import { BASE_BEARING, BASE_DURATION, BASE_PITCH, BASE_ZOOM, MAPBOX_SOURCE_LAYER
 import { createFillColorExpression, getFillOpacity, processDistrictFeature } from "@/app/_utils/map/common"
 import type { IDistrictLayerProps } from "@/app/_utils/types/map"
 import { useEffect } from "react"
+import { useRealtimeKMeans } from "@/app/_hooks/use-realtime-kmeans"
 
 export default function DistrictFillLineLayer({
     visible = true,
@@ -21,6 +22,41 @@ export default function DistrictFillLineLayer({
     showFill = true,
     activeControl,
 }: IDistrictLayerProps & { onDistrictClick?: (district: any) => void }) {
+
+    // Add real-time cluster data for current year
+    const {
+        clusterData: realtimeClusterData,
+        isRealTimeEnabled
+    } = useRealtimeKMeans({
+        enabled: Number(year) === new Date().getFullYear() && activeControl === "cbt" as any,
+        year: Number(year),
+    });
+
+    // Use real-time data for district coloring if available, otherwise fall back to historical data
+    const effectiveCrimeData = (() => {
+        const currentYear = new Date().getFullYear();
+        const isCurrentYear = Number(year) === currentYear;
+
+        if (isCurrentYear && isRealTimeEnabled && realtimeClusterData.length > 0) {
+            // Use real-time district_clusters data for current year
+            console.log("District Layer - Using real-time district_clusters data for coloring");
+            return realtimeClusterData.reduce((acc, cluster) => {
+                acc[cluster.district_id] = {
+                    risk_level: cluster.risk_level,
+                    total_crimes: cluster.total_crimes,
+                    cluster_score: cluster.cluster_score,
+                    last_update_type: cluster.last_update_type,
+                    isRealTime: true
+                };
+                return acc;
+            }, {} as Record<string, any>)
+        } else {
+            // Use historical crimes data for past years
+            console.log("District Layer - Using historical crimes data for coloring");
+            return crimeDataByDistrict;
+        }
+    })();
+
     useEffect(() => {
         if (!map || !visible) return
 
@@ -124,7 +160,7 @@ export default function DistrictFillLineLayer({
                         url: `mapbox://${tilesetId}`,
                     })
 
-                    let fillColorExpression = createFillColorExpression(focusedDistrictId, crimeDataByDistrict)
+                    let fillColorExpression = createFillColorExpression(focusedDistrictId, effectiveCrimeData)
                     if (
                         Array.isArray(fillColorExpression) &&
                         fillColorExpression[0] === "match" &&
@@ -186,7 +222,7 @@ export default function DistrictFillLineLayer({
                     map.on("click", "district-fill", handleDistrictClick)
                 } else {
                     if (map.getLayer("district-fill")) {
-                        let fillColorExpression = createFillColorExpression(focusedDistrictId, crimeDataByDistrict)
+                        let fillColorExpression = createFillColorExpression(focusedDistrictId, effectiveCrimeData)
                         if (
                             Array.isArray(fillColorExpression) &&
                             fillColorExpression[0] === "match" &&
@@ -231,7 +267,7 @@ export default function DistrictFillLineLayer({
         year,
         month,
         focusedDistrictId,
-        crimeDataByDistrict,
+        effectiveCrimeData, // Use effective data instead of crimeDataByDistrict
         onClick,
         onDistrictClick,
         setFocusedDistrictId,
@@ -243,7 +279,7 @@ export default function DistrictFillLineLayer({
         if (!map || !map.getLayer("district-fill")) return
 
         try {
-            let fillColorExpression = createFillColorExpression(focusedDistrictId, crimeDataByDistrict)
+            let fillColorExpression = createFillColorExpression(focusedDistrictId, effectiveCrimeData)
             if (
                 Array.isArray(fillColorExpression) &&
                 fillColorExpression[0] === "match" &&
@@ -264,7 +300,7 @@ export default function DistrictFillLineLayer({
         } catch (error) {
             console.error("Error updating district fill colors or opacity:", error)
         }
-    }, [map, focusedDistrictId, crimeDataByDistrict, activeControl, showFill])
+    }, [map, focusedDistrictId, effectiveCrimeData, activeControl, showFill]) // Use effective data
 
     return null
 }

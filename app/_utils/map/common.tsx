@@ -84,6 +84,15 @@ export const extractCrimeIncidents = (
 
     let filteredIncidents = crime.crime_incidents;
 
+    // Check length of incidents
+    if (filteredIncidents.length === 0) {
+      console.warn('No incidents found for crime:', crime.id);
+      return [];
+    }
+
+    console.log('Crime incidents count:', filteredIncidents.length);
+
+
     if (filterCategory !== 'all') {
       filteredIncidents = crime.crime_incidents.filter(
         (incident) =>
@@ -109,6 +118,8 @@ export const extractCrimeIncidents = (
             level: crime.level || 'low',
             description: incident.description || '',
             status: incident.status || '',
+            timestamp: incident.timestamp || new Date().toISOString(),
+
           },
           geometry: {
             type: 'Point' as const,
