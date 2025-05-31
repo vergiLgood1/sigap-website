@@ -270,8 +270,7 @@ export default function CBUClusterLayer({
                                 "step",
                                 ["get", "sum"],
                                 15,  // Default radius
-                                10, 20,  // 10+ crimes: radius 20
-                                50, 25,  // 50+ crimes: radius 25
+                                10, 25,  // 10+ crimes: radius 20
                                 100, 30, // 100+ crimes: radius 30
                                 200, 35, // 200+ crimes: radius 35
                                 500, 40  // 500+ crimes: radius 40
@@ -281,13 +280,13 @@ export default function CBUClusterLayer({
                                 "step",
                                 ["get", "sum"],
                                 "#4287f5", // Light blue (low)
-                                50, "#2970df", // Medium blue (medium low)
-                                100, "#1657c0", // Dark blue (medium)
-                                200, "#ffa726", // Orange (medium high)
-                                500, "#e53935"  // Red (high)
+                                50, "#51bbd6", // Medium blue (medium low)
+                                100, "#f1f075", // Dark blue (medium)
+                                200, "#f28cb1", // Orange (medium high)
+                                // 500, "#e53935"  // Red (high)
                             ],
-                            "circle-stroke-width": 1,
-                            "circle-stroke-color": "#ffffff",
+                            // "circle-stroke-width": 1,
+                            // "circle-stroke-color": "#ffffff",
                             "circle-opacity": 0.8
                         }
                     });
@@ -325,9 +324,9 @@ export default function CBUClusterLayer({
                             "circle-color": [
                                 "match",
                                 ["get", "level"],
-                                "high", "#e53935",
-                                "medium", "#ffa726",
-                                "low", "#4fc3f7",
+                                "high", "#f28cb1",
+                                "medium", "#f1f075",
+                                "low", "#51bbd6",
                                 "#4287f5" // default color
                             ],
                             // Size based on number_of_crime using a more subtle scale for individual points
@@ -339,8 +338,8 @@ export default function CBUClusterLayer({
                                 10, ["*", 0.6, ["sqrt", ["get", "number_of_crime"]]],
                                 14, ["*", 1.0, ["sqrt", ["get", "number_of_crime"]]]
                             ],
-                            "circle-stroke-width": 1,
-                            "circle-stroke-color": "#ffffff",
+                            // "circle-stroke-width": 1,
+                            // "circle-stroke-color": "#ffffff",
                             "circle-opacity": 0.8
                         }
                     });
