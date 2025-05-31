@@ -16,6 +16,8 @@ import type { MapGeoJSONFeature, MapMouseEvent } from "react-map-gl/mapbox";
 import { manageLayerVisibility } from "@/app/_utils/map/layer-visibility";
 import { getCategoryColor } from "@/app/_utils/colors";
 import type { Map, ExpressionSpecification } from "mapbox-gl";
+import { createSmoothTransition } from "@/app/_utils/map/popup-positioning";
+import { positionForPopup } from "@/app/_utils/map/popup-positioning";
 
 
 interface IAllIncidentsLayerProps {
@@ -203,14 +205,13 @@ export default function AllIncidentsLayer(
                 timestamp: new Date(props.timestamp || Date.now()),
             };
 
-            // Fly to the incident location
-            map.flyTo({
-                center: [IincidentDetails.longitude, IincidentDetails.latitude],
-                zoom: ZOOM_3D,
-                bearing: BASE_BEARING,
-                pitch: PITCH_3D,
-                duration: BASE_DURATION,
-            });
+            // Position for optimal popup visibility
+            const transitionOptions = positionForPopup(
+                map,
+                [IincidentDetails.longitude, IincidentDetails.latitude],
+                { duration: BASE_DURATION }
+            );
+            map.easeTo(transitionOptions);
 
             // Set selected incident for the popup
             setSelectedIncident(IincidentDetails);
@@ -223,19 +224,11 @@ export default function AllIncidentsLayer(
         [map],
     );
 
-    // Handle popup close
+    // Update handleClosePopup to not reset the view
     const handleClosePopup = useCallback(() => {
-        if (!map) return;
-
-        map.easeTo({
-            zoom: BASE_ZOOM,
-            bearing: BASE_BEARING,
-            pitch: BASE_PITCH,
-            duration: BASE_DURATION,
-        });
-
         setSelectedIncident(null);
-    }, [map]);
+        // Don't reset the view - user can navigate as needed
+    }, []);
 
     // Effect to manage layer visibility consistently
     useEffect(() => {
@@ -622,6 +615,16 @@ export default function AllIncidentsLayer(
                 longitude,
                 timestamp: new Date(timestamp || Date.now()),
             };
+
+            // Position for optimal popup visibility
+            if (map) {
+                const transitionOptions = positionForPopup(
+                    map,
+                    [longitude, latitude],
+                    { duration: BASE_DURATION }
+                );
+                map.easeTo(transitionOptions);
+            }
 
             // Set the selected incident to display the popup
             setSelectedIncident(incidentDetails);

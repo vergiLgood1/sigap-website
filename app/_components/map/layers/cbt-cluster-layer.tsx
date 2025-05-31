@@ -9,6 +9,14 @@ import { manageLayerVisibility } from "@/app/_utils/map/layer-visibility"
 import { useRealtimeKMeans } from "@/app/_hooks/use-realtime-kmeans"
 import { ICrimes } from "@/app/_utils/types/crimes"
 import IncidentPopup from "../pop-up/incident-popup"
+import {
+  BASE_BEARING,
+  BASE_DURATION,
+  BASE_PITCH,
+  BASE_ZOOM,
+  PITCH_3D,
+  ZOOM_3D,
+} from "@/app/_utils/const/map";
 
 interface ICrimeIncident {
   id: string;
@@ -144,7 +152,17 @@ export default function CBTClusterLayer({
   // Handle incident popup close
   const handlePopupClose = useCallback(() => {
     setSelectedIncident(null);
-  }, []);
+
+    // Return to default view when closing the popup
+    if (map) {
+      map.flyTo({
+        zoom: BASE_ZOOM,
+        pitch: BASE_PITCH,
+        bearing: BASE_BEARING,
+        duration: BASE_DURATION,
+      });
+    }
+  }, [map]);
 
   // Check if map style is loaded
   useEffect(() => {
@@ -278,7 +296,7 @@ export default function CBTClusterLayer({
         e.originalEvent.stopPropagation();
         e.preventDefault();
 
-        if (!e.features || e.features.length === 0) return;
+        if (!e.features || e.features.length === 0 || !map) return;
 
         const feature = e.features[0];
         const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
@@ -298,6 +316,16 @@ export default function CBTClusterLayer({
           longitude: coordinates[0]
         };
 
+        // Fly to the incident location with enhanced 3D view
+        map.flyTo({
+          center: coordinates,
+          zoom: ZOOM_3D,
+          pitch: PITCH_3D,
+          bearing: BASE_BEARING,
+          duration: BASE_DURATION,
+        });
+
+        // Set selected incident for the popup
         setSelectedIncident(incident);
       };
 
@@ -311,6 +339,7 @@ export default function CBTClusterLayer({
 
         const feature = e.features[0];
         const clusterId = feature.properties?.cluster_id;
+        const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
 
         try {
           const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource & { getClusterExpansionZoom: Function };
@@ -320,10 +349,14 @@ export default function CBTClusterLayer({
               (error: Error | null | undefined, zoom: number | null | undefined) => {
                 if (error || zoom === null || zoom === undefined || !map) return;
 
-                const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
-                map.easeTo({
+                // Enhanced flyTo animation with gentle rotation and pitch for a more immersive experience
+                map.flyTo({
                   center: coordinates,
-                  zoom: zoom
+                  zoom: zoom,
+                  pitch: 45, // Add a slight pitch when zooming to clusters
+                  bearing: (Math.random() * 40) - 20, // Add a subtle random  
+                  duration: BASE_DURATION,
+                  essential: true, // This animation is considered essential for the user experience
                 });
               }
             );
@@ -405,6 +438,25 @@ export default function CBTClusterLayer({
       console.error("Error updating CBT layer visibility:", error);
     }
   }, [map, mapReady, visible, showClusters, sourceType, layerIds]);
+
+  // Effect to handle selected incident changes
+  useEffect(() => {
+    if (!map || !selectedIncident) return;
+
+    // When an incident is selected (not through click, but by other means),
+    // ensure we fly to it
+    const { longitude, latitude } = selectedIncident;
+
+    if (longitude && latitude) {
+      map.flyTo({
+        center: [longitude, latitude],
+        // zoom: ZOOM_3D,
+        // pitch: PITCH_3D,
+        // bearing: BASE_BEARING,
+        duration: BASE_DURATION,
+      });
+    }
+  }, [map, selectedIncident]);
 
   return (
     <>
