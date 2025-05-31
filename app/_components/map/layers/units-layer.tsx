@@ -824,7 +824,7 @@ export default function UnitsLayer({ crimes, units = [], filterCategory, visible
                 <IncidentPopup
                     longitude={selectedIncident.longitude}
                     latitude={selectedIncident.latitude}
-                    onClose={handleClosePopup}
+                    onClose={() => setSelectedIncident(null)}
                     incident={selectedIncident}
                     nearestUnit={nearestUnits}
                     isLoadingNearestUnit={isLoadingNearestUnits}

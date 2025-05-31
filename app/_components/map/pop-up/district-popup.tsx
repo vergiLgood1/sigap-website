@@ -104,7 +104,7 @@ export default function DistrictPopup({
             closeButton={false} // Hide default close button
             closeOnClick={false}
             onClose={onClose}
-            anchor="top"
+            anchor="bottom"
             maxWidth="300px"
             className="district-popup z-50"
         >

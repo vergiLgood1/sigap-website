@@ -165,18 +165,21 @@ export default function AllIncidentsLayer(
         return expression as ExpressionSpecification;
     }, []);
 
+    // Modify the handleIncidentClick callback to be more robust
     const handleIncidentClick = useCallback(
         (e: MapMouseEvent & { features?: MapGeoJSONFeature[] }) => {
             if (!map) return;
+
+            // Always stop propagation at the beginning of the handler
+            if (e.originalEvent) {
+                e.originalEvent.stopPropagation();
+                e.preventDefault();
+            }
 
             const features = map.queryRenderedFeatures(e.point, {
                 layers: ["all-incidents"],
             });
             if (!features || features.length === 0) return;
-
-            // Stop event propagation
-            e.originalEvent.stopPropagation();
-            e.preventDefault();
 
             isInteractingWithMarker.current = true;
 
@@ -456,7 +459,7 @@ export default function AllIncidentsLayer(
                     }, firstSymbolId);
                 }
 
-                // Add mouse events
+                // Add mouse events with proper event propagation control
                 map.on("mouseenter", "all-incidents", () => {
                     map.getCanvas().style.cursor = "pointer";
                 });
@@ -465,7 +468,18 @@ export default function AllIncidentsLayer(
                     map.getCanvas().style.cursor = "";
                 });
 
-                map.on("click", "all-incidents", handleIncidentClick);
+                // Remove any existing click handler first to avoid duplicates
+                map.off("click", "all-incidents", handleIncidentClick);
+
+                // Add click handler with explicit event stopping
+                map.on("click", "all-incidents", (e) => {
+                    // Immediately stop event propagation to prevent district layer from handling this click
+                    e.originalEvent.stopPropagation();
+                    e.preventDefault();
+
+                    // Then pass the event to our handler
+                    handleIncidentClick(e);
+                });
             } catch (error) {
                 console.error("Error setting up all incidents layer:", error);
             }
@@ -531,6 +545,49 @@ export default function AllIncidentsLayer(
         };
     }, [map, visible, crimes, filterCategory, handleIncidentClick]);
 
+    // Additional effect to enforce click handling when the map style changes
+    useEffect(() => {
+        if (!map || !visible) return;
+
+        // Function to reattach the click handler after style changes
+        const reattachClickHandler = () => {
+            if (!map || !visible) return;
+
+            // Only proceed if the layer exists
+            if (!map.getLayer('all-incidents')) return;
+
+            // Remove any existing click handler first
+            map.off("click", "all-incidents", handleIncidentClick);
+
+            // Add click handler with explicit event stopping
+            map.on("click", "all-incidents", (e) => {
+                // Immediately stop event propagation
+                e.originalEvent.stopPropagation();
+                e.preventDefault();
+
+                // Then pass the event to our handler
+                handleIncidentClick(e);
+            });
+        };
+
+        // Reattach handlers after style load
+        map.on('style.load', reattachClickHandler);
+
+        // Also reattach when the source data changes
+        map.on('sourcedata', (e) => {
+            if (e.sourceId === 'all-incidents-source' && e.isSourceLoaded && map.getLayer('all-incidents')) {
+                reattachClickHandler();
+            }
+        });
+
+        return () => {
+            if (map) {
+                map.off('style.load', reattachClickHandler);
+                map.off('sourcedata', e => { });
+            }
+        };
+    }, [map, visible, handleIncidentClick]);
+
     // Custom event listener for showing incident popup
     useEffect(() => {
         if (!map || !visible) return;
@@ -578,6 +635,55 @@ export default function AllIncidentsLayer(
             document.removeEventListener("show-incident-popup", handleShowIncidentPopup);
         };
     }, [map, visible]);
+
+    // Create a new utility function to ensure this layer gets priority over district layers
+    useEffect(() => {
+        if (!map || !visible) return;
+
+        // Function to ensure our layers are above district layers but below UI layers
+        const ensureProperLayerOrder = () => {
+            if (!map) return;
+
+            // Get all existing layers
+            const existingLayers = map.getStyle().layers || [];
+
+            // Define layer groups in order of rendering (first in array = bottom layer)
+            const layerOrderGroups = [
+                // Background and base layers should be at the bottom
+                ['district-fill', 'district-line', 'district-extrusion'],
+
+                // Our incident layers should be in the middle
+                ['all-incidents-pulse', 'all-incidents-circles', 'all-incidents'],
+
+                // UI and interactive elements should be at the top
+                ['units-points', 'units-symbols', 'incidents-points']
+            ];
+
+            // Process layer groups from bottom to top
+            layerOrderGroups.forEach(group => {
+                group.forEach(layerId => {
+                    // Only process layers that exist
+                    if (map.getLayer(layerId)) {
+                        // Move to top will put this layer above all previous layers
+                        map.moveLayer(layerId);
+                    }
+                });
+            });
+        };
+
+        // Try to enforce layer order immediately and after style load
+        if (map.isStyleLoaded()) {
+            ensureProperLayerOrder();
+        }
+
+        map.on('style.load', ensureProperLayerOrder);
+
+        return () => {
+            if (map) {
+                map.off('style.load', ensureProperLayerOrder);
+            }
+        };
+    }, [map, visible, LAYER_IDS]);
 
     return (
         <>

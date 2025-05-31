@@ -285,8 +285,7 @@ export default function CBUClusterLayer({
                                 200, "#f28cb1", // Orange (medium high)
                                 // 500, "#e53935"  // Red (high)
                             ],
-                            "circle-stroke-width": 1, // Add stroke for better visibility
-                            "circle-stroke-color": "#ffffff",
+
                             "circle-opacity": 0.85
                         }
                     });
@@ -340,8 +339,7 @@ export default function CBUClusterLayer({
                                 10, ["*", 0.8, ["sqrt", ["get", "number_of_crime"]]], // Increased from 0.6
                                 14, ["*", 1.2, ["sqrt", ["get", "number_of_crime"]]] // Increased from 1.0
                             ],
-                            "circle-stroke-width": 1,
-                            "circle-stroke-color": "#ffffff",
+
                             "circle-opacity": 0.85
                         }
                     });

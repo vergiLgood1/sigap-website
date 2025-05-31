@@ -78,7 +78,7 @@ export default function CrimePopup({ longitude, latitude, onClose, incident }: I
             closeButton={false}
             closeOnClick={false}
             onClose={onClose}
-            anchor="top"
+            anchor="bottom"
             maxWidth="320px"
             className="incident-popup z-50"
         >

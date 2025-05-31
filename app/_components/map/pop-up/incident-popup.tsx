@@ -62,7 +62,7 @@ export default function IncidentPopup({
             closeButton={false}
             closeOnClick={false}
             onClose={onClose}
-            anchor="top"
+            anchor="bottom"
             maxWidth="320px"
             className="incident-popup z-50"
         >
