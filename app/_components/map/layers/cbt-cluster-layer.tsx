@@ -1,13 +1,27 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useState, useRef } from "react"
 import mapboxgl, { DataDrivenPropertyValueSpecification } from "mapbox-gl"
 import type { GeoJSON } from "geojson"
 import type { IClusterLayerProps } from "@/app/_utils/types/map"
 import { extractCrimeIncidents } from "@/app/_utils/map/common"
 import { manageLayerVisibility } from "@/app/_utils/map/layer-visibility"
+import { useRealtimeKMeans } from "@/app/_hooks/use-realtime-kmeans"
 import { ICrimes } from "@/app/_utils/types/crimes"
-import { BASE_DURATION, BASE_PITCH, BASE_ZOOM } from "@/app/_utils/const/map"
+import IncidentPopup from "../pop-up/incident-popup"
+
+interface ICrimeIncident {
+  id: string;
+  district?: string;
+  category?: string;
+  type_category?: string | null;
+  description?: string;
+  status: string;
+  address?: string | null;
+  timestamp?: Date;
+  latitude?: number;
+  longitude?: number;
+}
 
 interface ExtendedClusterLayerProps extends IClusterLayerProps {
   clusteringEnabled?: boolean
@@ -29,274 +43,320 @@ export default function CBTClusterLayer({
   year,
   month,
 }: ExtendedClusterLayerProps) {
-  // Define layer IDs for consistent management - CBT specific
-  const LAYER_IDS = ['cbt-clusters', 'cbt-cluster-count'];
+  // State for incident popup
+  const [selectedIncident, setSelectedIncident] = useState<ICrimeIncident | null>(null);
+  const [mapReady, setMapReady] = useState<boolean>(false);
+  const layersAdded = useRef<boolean>(false);
+  const sourceId = "cbt-crimes";
+  const layerIds = ['cbt-clusters', 'cbt-cluster-count', 'cbt-unclustered-point'];
 
-  const currentYear = new Date().getFullYear();
-  const isCurrentYear = Number(year) === currentYear;
+  // Filter crimes by sourceType
+  const cbtCrimes = crimes.filter(crime => crime.source_type === "cbt");
 
-  // Log data source for debugging
-  useEffect(() => {
-    console.log(`CBT Cluster Layer - Using crime incidents data for ${year}: ${crimes.length} crimes`);
-    console.log(`Is current year: ${isCurrentYear}, Real-time crime_incidents enabled in Supabase`);
-  }, [year, isCurrentYear, crimes.length]);
+  // Extract detailed crime incidents for CBT visualization
+  const geoJsonData = useCallback(() => {
+    try {
+      const incidents = extractCrimeIncidents(
+        cbtCrimes,
+        filterCategory
+      );
 
-  const handleClusterClick = useCallback(
-    (e: any) => {
-      if (!map) return
+      // Filter out null or undefined incidents
+      const validIncidents = incidents.filter(incident =>
+        incident && incident.geometry && incident.geometry.coordinates);
 
-      e.originalEvent.stopPropagation()
-      e.preventDefault()
+      // Transform to GeoJSON format
+      const features = validIncidents.map((incident) => ({
+        type: "Feature" as const,
+        properties: {
+          id: incident?.properties?.id || "unknown",
+          district: incident?.properties?.district || "",
+          category: incident?.properties?.category || "",
+          type_category: incident?.properties?.category || null,
+          description: incident?.properties?.description || "",
+          status: incident?.properties?.status || "",
+          address: incident?.properties?.address || null,
+          timestamp: incident?.properties?.timestamp ?
+            new Date(incident?.properties.timestamp).toISOString() : null,
+        },
+        geometry: {
+          type: "Point" as const,
+          coordinates: incident?.geometry.coordinates || [0, 0],
+        },
+      }));
 
-      const features = map.queryRenderedFeatures(e.point, { layers: ["cbt-clusters"] })
+      return {
+        type: "FeatureCollection" as const,
+        features,
+      } as GeoJSON.FeatureCollection;
+    } catch (error) {
+      console.error("Error generating CBT GeoJSON data:", error);
+      return {
+        type: "FeatureCollection",
+        features: []
+      } as GeoJSON.FeatureCollection;
+    }
+  }, [cbtCrimes, filterCategory]);
 
-      if (!features || features.length === 0) return
+  // Handle incident popup close
+  const handlePopupClose = useCallback(() => {
+    setSelectedIncident(null);
+  }, []);
 
-      const clusterId: number = features[0].properties?.cluster_id as number
-
-      try {
-        ; (map.getSource("cbt-crime-incidents") as mapboxgl.GeoJSONSource).getClusterExpansionZoom(
-          clusterId,
-          (err, zoom) => {
-            if (err) {
-              console.error("Error getting cluster expansion zoom:", err)
-              return
-            }
-
-            const coordinates = (features[0].geometry as any).coordinates
-
-            map.flyTo({
-              center: coordinates,
-              zoom: zoom ?? BASE_ZOOM,
-              bearing: 0,
-              pitch: BASE_PITCH,
-              duration: BASE_DURATION,
-            })
-          },
-        )
-      } catch (error) {
-        console.error("Error handling cluster click:", error)
-      }
-    },
-    [map],
-  )
-
-  // Use centralized layer visibility management
+  // Check if map style is loaded
   useEffect(() => {
     if (!map) return;
 
-    return manageLayerVisibility(map, LAYER_IDS, visible && showClusters && !focusedDistrictId);
-  }, [map, visible, showClusters, focusedDistrictId]);
-
-  useEffect(() => {
-    if (!map || !visible) return
-
-    const onStyleLoad = () => {
-      if (!map) return
-
-      try {
-        const layers = map.getStyle().layers
-        let firstSymbolId: string | undefined
-        for (const layer of layers) {
-          if (layer.type === "symbol") {
-            firstSymbolId = layer.id
-            break
-          }
-        }
-
-        if (!map.getSource("cbt-crime-incidents")) {
-          // Extract crime incidents from crimes data (CBT only)
-          // This will automatically get real-time data for current year from Supabase
-          let features = extractCrimeIncidents(crimes as ICrimes[], filterCategory).filter(Boolean) as GeoJSON.Feature[]
-
-          // Add metadata for current year data (real-time from Supabase)
-          if (isCurrentYear) {
-            features = features.map(feature => ({
-              ...feature,
-              properties: {
-                ...feature.properties,
-                isRealTime: true,
-                year: Number(year),
-                lastUpdate: new Date().toISOString(),
-                dataSource: 'supabase_realtime'
-              }
-            }));
-          }
-
-          map.addSource("cbt-crime-incidents", {
-            type: "geojson",
-            data: {
-              type: "FeatureCollection",
-              features: features,
-            },
-            cluster: clusteringEnabled,
-            clusterMaxZoom: 14,
-            clusterRadius: 50,
-          })
-
-          if (!map.getLayer("cbt-clusters")) {
-            // Enhanced cluster styling for current year real-time data
-            const clusterColorExpression = (isCurrentYear
-              ? ["step", ["get", "point_count"], "#10b981", 5, "#f59e0b", 15, "#ef4444"] // Green-yellow-red for real-time
-              : ["step", ["get", "point_count"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"]) as DataDrivenPropertyValueSpecification<string>; // Original colors for historical
-
-            map.addLayer(
-              {
-                id: "cbt-clusters",
-                type: "circle",
-                source: "cbt-crime-incidents",
-                filter: ["has", "point_count"],
-                paint: {
-                  "circle-color": clusterColorExpression,
-                  "circle-radius": ["step", ["get", "point_count"], 20, 5, 30, 15, 40],
-                  "circle-opacity": 0.75,
-                  // Add stroke for current year clusters
-                  "circle-stroke-width": isCurrentYear ? 2 : 0,
-                  "circle-stroke-color": isCurrentYear ? "#ffffff" : "transparent",
-                },
-                layout: {
-                  visibility: showClusters && !focusedDistrictId ? "visible" : "none",
-                },
-              },
-              firstSymbolId,
-            )
-          }
-
-          if (!map.getLayer("cbt-cluster-count")) {
-            map.addLayer({
-              id: "cbt-cluster-count",
-              type: "symbol",
-              source: "cbt-crime-incidents",
-              filter: ["has", "point_count"],
-              layout: {
-                "text-field": "{point_count_abbreviated}",
-                "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-                "text-size": 12,
-                visibility: showClusters && !focusedDistrictId ? "visible" : "none",
-              },
-              paint: {
-                "text-color": "#ffffff",
-              },
-            })
-          }
-
-          // Event handlers for clusters
-          map.on("mouseenter", "cbt-clusters", () => {
-            map.getCanvas().style.cursor = "pointer"
-          })
-
-          map.on("mouseleave", "cbt-clusters", () => {
-            map.getCanvas().style.cursor = ""
-          })
-
-          map.off("click", "cbt-clusters", handleClusterClick)
-          map.on("click", "cbt-clusters", handleClusterClick)
-        } else {
-          // Update existing source with new data
-          try {
-            const currentSource = map.getSource("cbt-crime-incidents") as mapboxgl.GeoJSONSource
-
-            // Extract crime incidents from updated crimes data
-            let features = extractCrimeIncidents(crimes as ICrimes[], filterCategory).filter(Boolean) as GeoJSON.Feature[]
-
-            // Add metadata for current year data
-            if (isCurrentYear) {
-              features = features.map(feature => ({
-                ...feature,
-                properties: {
-                  ...feature.properties,
-                  isRealTime: true,
-                  year: Number(year),
-                  lastUpdate: new Date().toISOString(),
-                  dataSource: 'supabase_realtime'
-                }
-              }));
-            }
-
-            // Update the source data
-            currentSource.setData({
-              type: "FeatureCollection",
-              features: features,
-            })
-
-            // Update cluster colors based on data type
-            if (map.getLayer("cbt-clusters")) {
-              const clusterColorExpression = (isCurrentYear
-                ? ["step", ["get", "point_count"], "#10b981", 5, "#f59e0b", 15, "#ef4444"]
-                : ["step", ["get", "point_count"], "#51bbd6", 5, "#f1f075", 15, "#f28cb1"]) as DataDrivenPropertyValueSpecification<string>;
-
-              map.setPaintProperty("cbt-clusters", "circle-color", clusterColorExpression);
-              map.setPaintProperty("cbt-clusters", "circle-stroke-width", isCurrentYear ? 2 : 0);
-              map.setPaintProperty("cbt-clusters", "circle-stroke-color", isCurrentYear ? "#ffffff" : "transparent");
-            }
-
-            console.log(`Updated CBT crime incident clusters: ${features.length} incidents ${isCurrentYear ? "(Real-time from Supabase)" : "(Historical)"}`);
-          } catch (error) {
-            console.error("Error updating CBT cluster source:", error)
-          }
-
-          // Update visibility for existing layers
-          if (map.getLayer("cbt-clusters")) {
-            map.setLayoutProperty("cbt-clusters", "visibility", showClusters && !focusedDistrictId ? "visible" : "none")
-          }
-
-          if (map.getLayer("cbt-cluster-count")) {
-            map.setLayoutProperty("cbt-cluster-count", "visibility", showClusters && !focusedDistrictId ? "visible" : "none")
-          }
-
-          map.off("click", "cbt-clusters", handleClusterClick)
-          map.on("click", "cbt-clusters", handleClusterClick)
-        }
-      } catch (error) {
-        console.error("Error adding CBT cluster layer:", error)
+    const checkIfStyleLoaded = () => {
+      if (map.isStyleLoaded()) {
+        setMapReady(true);
+      } else {
+        setTimeout(checkIfStyleLoaded, 100);
       }
-    }
+    };
 
-    if (map.isStyleLoaded()) {
-      onStyleLoad()
-    } else {
-      map.once("style.load", onStyleLoad)
-    }
+    checkIfStyleLoaded();
+  }, [map]);
 
-    return () => {
-      if (map) {
-        map.off("click", "cbt-clusters", handleClusterClick)
-      }
-    }
-  }, [
-    map,
-    visible,
-    crimes, // Direct dependency on crimes data
-    filterCategory,
-    focusedDistrictId,
-    handleClusterClick,
-    clusteringEnabled,
-    showClusters,
-    sourceType,
-    isCurrentYear,
-    year,
-  ])
-
-  // Visibility effect
+  // Add source and layers when map is ready
   useEffect(() => {
-    if (!map) return
+    if (!map || !mapReady) return;
+
+    // Cleanup function to remove listeners
+    const cleanup = () => {
+      if (!map) return;
+
+      // Remove event listeners
+      layerIds.forEach(layerId => {
+        try {
+          if (map.getLayer(layerId)) {
+            map.off('click', layerId, () => { });
+            map.off('mouseenter', layerId, () => { });
+            map.off('mouseleave', layerId, () => { });
+          }
+        } catch (e) {
+        // Ignore errors during cleanup
+        }
+      });
+    };
 
     try {
-      if (map.getLayer("cbt-clusters")) {
-        map.setLayoutProperty("cbt-clusters", "visibility", showClusters && !focusedDistrictId ? "visible" : "none")
+      // Check if source exists
+      let source;
+      try {
+        source = map.getSource(sourceId);
+      } catch (e) {
+        // Source doesn't exist yet
       }
 
-      if (map.getLayer("cbt-cluster-count")) {
-        map.setLayoutProperty(
-          "cbt-cluster-count",
-          "visibility",
-          showClusters && !focusedDistrictId ? "visible" : "none",
-        )
+      if (!source) {
+        // Add source if it doesn't exist
+        map.addSource(sourceId, {
+          type: "geojson",
+          data: geoJsonData(),
+          cluster: clusteringEnabled,
+          clusterMaxZoom: 14,
+          clusterRadius: 50,
+        });
+      } else {
+        // Update the source data
+        (source as mapboxgl.GeoJSONSource).setData(geoJsonData());
+      }
+
+      // Add layers if they don't exist yet
+      if (!layersAdded.current) {
+      // Add cluster layer
+        if (!map.getLayer("cbt-clusters")) {
+          map.addLayer({
+            id: "cbt-clusters",
+            type: "circle",
+            source: sourceId,
+            filter: ["has", "point_count"],
+            paint: {
+              "circle-color": [
+                "step",
+                ["get", "point_count"],
+                "#51bbd6",
+                10,
+                "#f1f075",
+                30,
+                "#f28cb1",
+              ],
+              "circle-radius": [
+                "step",
+                ["get", "point_count"],
+                20,
+                10,
+                30,
+                30,
+                40,
+              ],
+            },
+          });
+        }
+
+        // Add count label layer
+        if (!map.getLayer("cbt-cluster-count")) {
+          map.addLayer({
+            id: "cbt-cluster-count",
+            type: "symbol",
+            source: sourceId,
+            filter: ["has", "point_count"],
+            layout: {
+              "text-field": "{point_count_abbreviated}",
+              "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+              "text-size": 12,
+            },
+          });
+        }
+
+        // Add unclustered point layer
+        if (!map.getLayer("cbt-unclustered-point")) {
+          map.addLayer({
+            id: "cbt-unclustered-point",
+            type: "circle",
+            source: sourceId,
+            filter: ["!", ["has", "point_count"]],
+            paint: {
+              "circle-color": "#11b4da",
+              "circle-radius": 8,
+              "circle-stroke-width": 1,
+              "circle-stroke-color": "#fff",
+            },
+          });
+        }
+
+        layersAdded.current = true;
+      }
+
+      // Handle click events on unclustered points
+      const handleUnclusteredClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+        if (!e.features || e.features.length === 0) return;
+
+        const feature = e.features[0];
+        const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+        const properties = feature.properties || {};
+
+        // Create incident object for popup
+        const incident: ICrimeIncident = {
+          id: properties.id || "unknown",
+          district: properties.district || undefined,
+          category: properties.category || undefined,
+          type_category: properties.type_category || undefined,
+          description: properties.description || undefined,
+          status: properties.status || "unknown",
+          address: properties.address || undefined,
+          timestamp: properties.timestamp ? new Date(properties.timestamp) : undefined,
+          latitude: coordinates[1],
+          longitude: coordinates[0]
+        };
+
+        setSelectedIncident(incident);
+      };
+
+      // Handle click events on clusters to zoom in
+      const handleClusterClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+        if (!e.features || e.features.length === 0 || !map) return;
+
+        const feature = e.features[0];
+        const clusterId = feature.properties?.cluster_id;
+
+        try {
+          const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource & { getClusterExpansionZoom: Function };
+          if (source && typeof source.getClusterExpansionZoom === 'function') {
+            source.getClusterExpansionZoom(
+              clusterId,
+              (error: Error | null | undefined, zoom: number | null | undefined) => {
+                if (error || zoom === null || zoom === undefined || !map) return;
+
+                const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+                map.easeTo({
+                  center: coordinates,
+                  zoom: zoom
+                });
+              }
+            );
+          }
+        } catch (error) {
+          console.error("Error handling cluster click:", error);
+        }
+      };
+
+      // Clean up previous event listeners
+      cleanup();
+
+      // Add event listeners
+      if (map.getLayer('cbt-clusters')) {
+        map.on('click', 'cbt-clusters', handleClusterClick);
+        map.on('mouseenter', 'cbt-clusters', () => {
+          if (map.getCanvas()) map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'cbt-clusters', () => {
+          if (map.getCanvas()) map.getCanvas().style.cursor = '';
+        });
+      }
+
+      if (map.getLayer('cbt-unclustered-point')) {
+        map.on('click', 'cbt-unclustered-point', handleUnclusteredClick);
+        map.on('mouseenter', 'cbt-unclustered-point', () => {
+          if (map.getCanvas()) map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'cbt-unclustered-point', () => {
+          if (map.getCanvas()) map.getCanvas().style.cursor = '';
+        });
+      }
+
+      // Set visibility based on props
+      manageLayerVisibility(map, layerIds, visible && showClusters && sourceType === 'cbt');
+
+    } catch (error) {
+      console.error("Error initializing CBT layer:", error);
+    }
+
+    return cleanup;
+  }, [map, mapReady, geoJsonData, clusteringEnabled, visible, showClusters, sourceType]);
+
+  // Update source data when relevant props change
+  useEffect(() => {
+    if (!map || !mapReady) return;
+
+    try {
+      const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+      if (source && typeof source.setData === 'function') {
+        source.setData(geoJsonData());
       }
     } catch (error) {
-      console.error("Error updating CBT cluster visibility:", error)
+    // Ignore errors - source might not be initialized yet
     }
-  }, [map, showClusters, focusedDistrictId])
+  }, [map, mapReady, geoJsonData, cbtCrimes, filterCategory, year, month]);
 
-  return null
+  // Update layer visibility when visibility props change
+  useEffect(() => {
+    if (!map || !mapReady) return;
+
+    try {
+      manageLayerVisibility(map, layerIds, visible && showClusters && sourceType === 'cbt');
+    } catch (error) {
+      // Ignore visibility errors
+    }
+  }, [map, mapReady, visible, showClusters, sourceType]);
+
+  return (
+    <>
+      {selectedIncident && (
+        <IncidentPopup
+          longitude={selectedIncident.longitude || 0}
+          latitude={selectedIncident.latitude || 0}
+          onClose={handlePopupClose}
+          incident={{
+            id: selectedIncident.id,
+            category: selectedIncident.category,
+            description: selectedIncident.description,
+            date: selectedIncident.timestamp,
+            district: selectedIncident.district,
+          }}
+        />
+      )}
+    </>
+  );
 }

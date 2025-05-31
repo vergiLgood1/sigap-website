@@ -1,0 +1,127 @@
+{
+  "json": {
+    "id": "CR-3509-5372-2023",
+    "district_id": "350929",
+    "created_at": "2025-05-19T05:33:46.845Z",
+    "level": "low",
+    "method": "kmeans",
+    "month": 7,
+    "number_of_crime": 1,
+    "score": 100,
+    "updated_at": "2025-05-19T05:33:46.845Z",
+    "year": 2023,
+    "source_type": "cbt",
+    "crime_cleared": 1,
+    "avg_crime": 0,
+    "districts": {
+      "name": "Sukowono",
+      "geographics": [
+        {
+          "address": "Sukowono, 68194, Sukowono, Jember, East Java, Indonesia",
+          "land_area": 50.43,
+          "year": 2020,
+          "latitude": -8.06409763438557,
+          "longitude": 113.8381587272382
+        },
+        {
+          "address": "Sukowono, 68194, Sukowono, Jember, East Java, Indonesia",
+          "land_area": 44.04,
+          "year": 2021,
+          "latitude": -8.06409763438557,
+          "longitude": 113.8381587272382
+        },
+        {
+          "address": "Sukowono, 68194, Sukowono, Jember, East Java, Indonesia",
+          "land_area": 43.55,
+          "year": 2022,
+          "latitude": -8.06409763438557,
+          "longitude": 113.8381587272382
+        },
+        {
+          "address": "Sukowono, 68194, Sukowono, Jember, East Java, Indonesia",
+          "land_area": 45.13,
+          "year": 2023,
+          "latitude": -8.06409763438557,
+          "longitude": 113.8381587272382
+        },
+        {
+          "address": "Sukowono, 68194, Sukowono, Jember, East Java, Indonesia",
+          "land_area": 45.13,
+          "year": 2024,
+          "latitude": -8.06409763438557,
+          "longitude": 113.8381587272382
+        },
+        {
+          "address": "Sukowono, 68194, Sukowono, Jember, East Java, Indonesia",
+          "land_area": 45.13,
+          "year": 2025,
+          "latitude": -8.06409763438557,
+          "longitude": 113.8381587272382
+        }
+      ],
+      "demographics": [
+        {
+          "number_of_unemployed": 21915,
+          "population": 58734,
+          "population_density": 1301.440283625083,
+          "year": 2020
+        },
+        {
+          "number_of_unemployed": 14525,
+          "population": 61039,
+          "population_density": 1352.514956791491,
+          "year": 2021
+        },
+        {
+          "number_of_unemployed": 15136,
+          "population": 61310,
+          "population_density": 1358.519831597607,
+          "year": 2022
+        },
+        {
+          "number_of_unemployed": 15490,
+          "population": 61997,
+          "population_density": 1373.742521604254,
+          "year": 2023
+        },
+        {
+          "number_of_unemployed": 1628,
+          "population": 62335,
+          "population_density": 1381.231996454686,
+          "year": 2024
+        },
+        {
+          "number_of_unemployed": 1628,
+          "population": 62335,
+          "population_density": 1381.231996454686,
+          "year": 2025
+        }
+      ]
+    },
+    "crime_incidents": [
+      {
+        "id": "CI-3509-7012-2025",
+        "timestamp": "2025-07-10T20:02:00.000Z",
+        "description": "Pelaporan perlindungan konsumen di Jalan Jawa Blok Y-18, Sukowono, Jember",
+        "status": "unresolved",
+        "crime_categories": {
+          "name": "Perlindungan Konsumen",
+          "type": "Pidana Tertentu"
+        },
+        "locations": {
+          "address": "Jalan Jawa Blok Y-18, Sukowono, Jember",
+          "latitude": -8.06210016760598,
+          "longitude": 113.889699832394,
+          "distance_to_unit": 6.14461219824
+        }
+      }
+    ]
+  },
+  "meta": {
+    "values": {
+      "created_at": ["Date"],
+      "updated_at": ["Date"],
+      "crime_incidents.0.timestamp": ["Date"]
+    }
+  }
+}

@@ -46,13 +46,16 @@ function updateLayersVisibility(
     layerIds: string[],
     isVisible: boolean
 ): void {
+    const visibilityValue = isVisible ? 'visible' : 'none';
+
     layerIds.forEach(layerId => {
-        if (map.getLayer(layerId)) {
-            map.setLayoutProperty(
-                layerId,
-                "visibility",
-                isVisible ? "visible" : "none"
-            )
+        try {
+            if (map.getStyle() && map.getLayer(layerId)) {
+                map.setLayoutProperty(layerId, 'visibility', visibilityValue);
+            }
+        } catch (error) {
+        // Silently handle errors for layer visibility changes
+        // These can happen during map style transitions
         }
     })
 }

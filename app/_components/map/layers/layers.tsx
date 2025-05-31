@@ -485,6 +485,7 @@ export default function Layers({
     const shouldShowExtrusion = focusedDistrictId !== null &&
         !isInteractingWithMarker.current;
 
+
     useEffect(() => {
         if (!mapboxMap) return;
 
