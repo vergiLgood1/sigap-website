@@ -13,10 +13,11 @@ export default function DistrictExtrusionLayer({
     crimeDataByDistrict,
 }: IExtrusionLayerProps) {
     const animationRef = useRef<number | null>(null)
-    const bearingRef = useRef(0)
     const rotationAnimationRef = useRef<number | null>(null)
     const extrusionCreatedRef = useRef(false)
     const lastFocusedDistrictRef = useRef<string | null>(null)
+    const userInteractingRef = useRef(false)
+    const bearingRef = useRef(0)
 
     // Define layer IDs for consistent management
     const LAYER_IDS = ['district-extrusion'];
@@ -123,6 +124,28 @@ export default function DistrictExtrusionLayer({
             map.once("style.load", onStyleLoad)
         }
 
+        // Add listeners to track user interaction
+        const handleInteractionStart = () => {
+            userInteractingRef.current = true
+        }
+        const handleInteractionEnd = () => {
+            userInteractingRef.current = false
+            // Resume rotation if needed
+            if (
+                visible &&
+                focusedDistrictId &&
+                lastFocusedDistrictRef.current === focusedDistrictId &&
+                !rotationAnimationRef.current
+            ) {
+                startRotation()
+            }
+        }
+        map.on("mousedown", handleInteractionStart)
+        map.on("touchstart", handleInteractionStart)
+        map.on("mouseup", handleInteractionEnd)
+        map.on("touchend", handleInteractionEnd)
+        map.on("dragend", handleInteractionEnd)
+
         return () => {
             if (animationRef.current) {
                 cancelAnimationFrame(animationRef.current)
@@ -132,6 +155,11 @@ export default function DistrictExtrusionLayer({
                 cancelAnimationFrame(rotationAnimationRef.current)
                 rotationAnimationRef.current = null
             }
+            map.off("mousedown", handleInteractionStart)
+            map.off("touchstart", handleInteractionStart)
+            map.off("mouseup", handleInteractionEnd)
+            map.off("touchend", handleInteractionEnd)
+            map.off("dragend", handleInteractionEnd)
         }
     }, [map, visible, tilesetId, focusedDistrictId, crimeDataByDistrict])
 
@@ -174,7 +202,13 @@ export default function DistrictExtrusionLayer({
                 cancelAnimationFrame(rotationAnimationRef.current)
                 rotationAnimationRef.current = null
             }
-            bearingRef.current = 0
+
+            // Stop any ongoing animated rotation
+            if (map.getLayer("district-extrusion")) {
+                const paintProps = map.getPaintProperty("district-extrusion", "fill-extrusion-translate") || [0, 0];
+                map.setPaintProperty("district-extrusion", "fill-extrusion-translate", paintProps);
+                map.setPaintProperty("district-extrusion", "fill-extrusion-translate-anchor", "map");
+            }
 
             // Animate height down
             const animateHeightDown = () => {
@@ -209,7 +243,6 @@ export default function DistrictExtrusionLayer({
                             ])
                             map.setFilter("district-extrusion", ["==", ["get", "kode_kec"], ""])
                             lastFocusedDistrictRef.current = null
-                            map.setBearing(0)
                             map.setLayoutProperty("district-extrusion", "visibility", "none")
                         }
                     } catch (error) {
@@ -251,6 +284,10 @@ export default function DistrictExtrusionLayer({
                 ["match", ["get", "kode_kec"], focusedDistrictId, 0, 0],
                 0,
             ])
+
+            // Reset any existing translations
+            map.setPaintProperty("district-extrusion", "fill-extrusion-translate", [0, 0])
+            map.setPaintProperty("district-extrusion", "fill-extrusion-translate-anchor", "map")
 
             // Make sure the layer is visible if we have a focusedDistrictId
             map.setLayoutProperty("district-extrusion", "visibility", "visible")
@@ -339,24 +376,35 @@ export default function DistrictExtrusionLayer({
         animationRef.current = requestAnimationFrame(animate)
     }
 
-    // Start rotation animation
+    // Start rotation animation (bearing)
     const startRotation = () => {
         if (!map || !focusedDistrictId || !visible) return
 
         const rotationSpeed = 0.05 // degrees per frame
-        bearingRef.current = 0
 
         const animate = () => {
-            if (!map || !focusedDistrictId || focusedDistrictId !== lastFocusedDistrictRef.current || !visible) {
+            if (
+                !map ||
+                !focusedDistrictId ||
+                focusedDistrictId !== lastFocusedDistrictRef.current ||
+                !visible
+            ) {
                 if (rotationAnimationRef.current) {
                     cancelAnimationFrame(rotationAnimationRef.current)
                     rotationAnimationRef.current = null
                 }
                 return
             }
-
+            // Pause rotation if user is dragging
+            if (userInteractingRef.current) {
+                if (rotationAnimationRef.current) {
+                    cancelAnimationFrame(rotationAnimationRef.current)
+                    rotationAnimationRef.current = null
+                }
+                return
+            }
             try {
-                bearingRef.current = (bearingRef.current + rotationSpeed) % 360
+                bearingRef.current = (map.getBearing() + rotationSpeed) % 360
                 map.setBearing(bearingRef.current)
                 rotationAnimationRef.current = requestAnimationFrame(animate)
             } catch (error) {
