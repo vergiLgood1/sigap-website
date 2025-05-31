@@ -530,18 +530,44 @@ export default function Layers({
             manageLayerVisibility(mapboxMap, allIncidentsLayerIds, false);
         }
 
-        // When source type changes, trigger a refresh by setting a timeout
+        // When source type changes, trigger a refresh
         if (sourceType === "cbt") {
-            console.log("Source type is CBT - ensuring CBU layers are hidden");
-            const cbuLayerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-crime-points', 'cbu-crime-count-labels'];
+            console.log("Setting CBU layers to hidden and CBT layers to visible");
+            const cbuLayerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-unclustered-point', 'cbu-unclustered-count'];
             manageLayerVisibility(mapboxMap, cbuLayerIds, false);
         } else {
-            console.log("Source type is CBU - ensuring CBT layers are hidden");
-            const cbtLayerIds = ['cbt-clusters', 'cbt-cluster-count'];
+            console.log("Setting CBT layers to hidden and CBU layers to visible");
+            const cbtLayerIds = ['cbt-clusters', 'cbt-cluster-count', 'cbt-unclustered-point'];
             manageLayerVisibility(mapboxMap, cbtLayerIds, false);
         }
 
     }, [activeControl, sourceType, mapboxMap]);
+
+    // Track previous source type to detect changes
+    const prevSourceTypeRef = useRef<ICrimeSourceTypes>(sourceType);
+
+    // Add effect to handle source type changes specifically
+    useEffect(() => {
+        if (!mapboxMap) return;
+
+        // Check if source type has changed
+        if (prevSourceTypeRef.current !== sourceType) {
+            console.log(`Source type changed from ${prevSourceTypeRef.current} to ${sourceType}`);
+
+            // Hide layers for the previous source type first
+            if (prevSourceTypeRef.current === "cbt") {
+                const cbtLayerIds = ['cbt-clusters', 'cbt-cluster-count', 'cbt-unclustered-point'];
+                manageLayerVisibility(mapboxMap, cbtLayerIds, false);
+            } else {
+                const cbuLayerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-unclustered-point', 'cbu-unclustered-count'];
+                manageLayerVisibility(mapboxMap, cbuLayerIds, false);
+            }
+
+            // Update the ref with the current source type
+            prevSourceTypeRef.current = sourceType;
+        }
+
+    }, [mapboxMap, sourceType]);
 
     return (
         <>
@@ -622,7 +648,7 @@ export default function Layers({
                 focusedDistrictId={focusedDistrictId}
                 clusteringEnabled={true}
                 showClusters={showCBTClusters}
-                sourceType={sourceType}
+                sourceType={sourceType} // Pass current source type
                 year={year}
                 month={month}
             />
@@ -635,7 +661,7 @@ export default function Layers({
                 focusedDistrictId={focusedDistrictId}
                 clusteringEnabled={true}
                 showClusters={showCBUClusters}
-                sourceType={sourceType}
+                sourceType={sourceType} // Pass current source type
                 year={year}
                 month={month}
             />

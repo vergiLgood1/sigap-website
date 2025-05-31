@@ -48,14 +48,34 @@ export default function CBUClusterLayer({
     const [mapReady, setMapReady] = useState<boolean>(false);
     const layersAdded = useRef<boolean>(false);
     const sourceId = "cbu-crimes";
-    const layerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-crime-points', 'cbu-crime-count-labels'];
+    const layerIds = ['cbu-clusters', 'cbu-cluster-count', 'cbu-unclustered-point', 'cbu-unclustered-count'];
+
+    // Track total crime count for debugging
+    const [totalCrimeCount, setTotalCrimeCount] = useState<number>(0);
+
+    const prevSourceTypeRef = useRef<string>(sourceType);
+
+    // Log when source type changes for this component
+    useEffect(() => {
+        // When source type changes, log it
+        if (prevSourceTypeRef.current !== sourceType) {
+            console.log(`CBU Layer: Source type changed from ${prevSourceTypeRef.current} to ${sourceType}`);
+            prevSourceTypeRef.current = sourceType;
+        }
+    }, [sourceType]);
 
     // Filter crimes by sourceType = cbu and match year/month criteria
     const getCBUCrimes = useCallback(() => {
         try {
+            // If not the active source type, return empty data
+            if (sourceType !== "cbu") {
+                return [];
+            }
+
             const selectedYear = year ? Number(year) : new Date().getFullYear();
 
-            return crimes.filter(crime => {
+            // Filter crimes by source type, year, and month
+            const filteredCrimes = crimes.filter(crime => {
                 // Filter by source type
                 if (crime.source_type !== "cbu") return false;
 
@@ -63,70 +83,99 @@ export default function CBUClusterLayer({
                 if (crime.year !== selectedYear) return false;
 
                 // If specific month is selected, filter by month
-                // If month is "all" or null, include crimes with null month for that year
                 if (month !== "all" && month !== null) {
                     return crime.month === Number(month);
                 } else {
                     return crime.month === null || crime.month === undefined;
                 }
             });
+
+            // Calculate total crime count for debugging
+            const totalCrimesCount = filteredCrimes.reduce((sum, crime) =>
+                sum + (crime.number_of_crime || 0), 0);
+
+            setTotalCrimeCount(totalCrimesCount);
+
+            // Only log if this is the active source type
+            if (sourceType === "cbu") {
+                console.log(`CBU total crimes: ${totalCrimesCount} across ${filteredCrimes.length} districts for year ${selectedYear}, month ${month}`);
+            }
+
+            return filteredCrimes;
         } catch (error) {
             console.error("Error filtering CBU crimes:", error);
             return [];
         }
-    }, [crimes, year, month]);
+    }, [crimes, year, month, sourceType]);
 
     // Create GeoJSON from CBU crimes
     const geoJsonData = useCallback(() => {
         try {
+            // If not the active source type, return empty data
+            if (sourceType !== "cbu") {
+                return {
+                    type: "FeatureCollection",
+                    features: []
+                } as GeoJSON.FeatureCollection;
+            }
+
             const cbuCrimes = getCBUCrimes();
 
-            // Transform to GeoJSON format
-            const features = cbuCrimes
-                .map((crime) => {
-                    try {
-                        const district = crime.districts;
-                        if (!district) return null;
+            // Transform to GeoJSON format with actual crime counts
+            const features: GeoJSON.Feature[] = [];
 
-                        // Find most recent geographic data
-                        const geoArray = district.geographics || [];
-                        if (geoArray.length === 0) return null;
+            cbuCrimes.forEach((crime) => {
+                try {
+                    const district = crime.districts;
+                    if (!district) return;
 
-                        const geo = [...geoArray]
-                            .filter(g => g && g.longitude && g.latitude)
-                            .sort((a, b) => ((b?.year || 0) - (a?.year || 0)))[0];
+                    // Find most recent geographic data
+                    const geoArray = district.geographics || [];
+                    if (geoArray.length === 0) return;
 
-                        if (!geo || !geo.longitude || !geo.latitude) return null;
+                    const geo = [...geoArray]
+                        .filter(g => g && g.longitude && g.latitude)
+                        .sort((a, b) => ((b?.year || 0) - (a?.year || 0)))[0];
 
-                        return {
-                            type: "Feature" as const,
+                    if (!geo || !geo.longitude || !geo.latitude) return;
+
+                    // Use the actual number_of_crime from the crime data
+                    const crimeCount = crime.number_of_crime || 0;
+
+                    // Only add districts with crimes
+                    if (crimeCount > 0) {
+                        features.push({
+                            type: "Feature",
                             properties: {
                                 id: crime.id || "",
                                 district_id: crime.district_id || "",
                                 district_name: district.name || "Unknown District",
-                                number_of_crime: crime.number_of_crime || 0,
+                                number_of_crime: crimeCount,
                                 level: crime.level || "unknown",
                                 year: crime.year || new Date().getFullYear(),
-                                month: crime.month
+                                month: crime.month,
+                                // For clustering to work with point_count
+                                crime_count: crimeCount,
+                                // Weight feature for clustering algorithm
+                                weight: crimeCount
                             },
                             geometry: {
-                                type: "Point" as const,
+                                type: "Point",
                                 coordinates: [
                                     Number(geo.longitude) || 0,
                                     Number(geo.latitude) || 0
                                 ],
                             },
-                        };
-                    } catch (error) {
-                        console.error("Error processing crime for GeoJSON:", error);
-                        return null;
+                        });
                     }
-                })
-                .filter(Boolean) as GeoJSON.Feature[];
+                } catch (error) {
+                    console.error("Error processing crime for GeoJSON:", error);
+                }
+            });
 
             return {
-                type: "FeatureCollection" as const,
-                features,
+                type: "FeatureCollection",
+                features
             } as GeoJSON.FeatureCollection;
         } catch (error) {
             console.error("Error generating CBU GeoJSON data:", error);
@@ -135,7 +184,7 @@ export default function CBUClusterLayer({
                 features: []
             } as GeoJSON.FeatureCollection;
         }
-    }, [getCBUCrimes]);
+    }, [getCBUCrimes, sourceType]);
 
     // Handler for closing the popup
     const handlePopupClose = useCallback(() => {
@@ -189,13 +238,17 @@ export default function CBUClusterLayer({
             }
 
             if (!source) {
-                // Add source if it doesn't exist
+                // Add source with clustering enabled
                 map.addSource(sourceId, {
                     type: "geojson",
                     data: geoJsonData(),
-                    cluster: clusteringEnabled,
+                    cluster: true,
                     clusterMaxZoom: 14,
-                    clusterRadius: 50,
+                    clusterRadius: 80,
+                    clusterProperties: {
+                        // Sum the crime counts when clustering
+                        sum: ["+", ["get", "number_of_crime"]]
+                    }
                 });
             } else {
                 // Update the source data
@@ -204,7 +257,7 @@ export default function CBUClusterLayer({
 
             // Add layers if they don't exist yet
             if (!layersAdded.current) {
-                // Add cluster layer
+                // Add cluster circle layer with dynamic size based on crime count
                 if (!map.getLayer("cbu-clusters")) {
                     map.addLayer({
                         id: "cbu-clusters",
@@ -212,57 +265,26 @@ export default function CBUClusterLayer({
                         source: sourceId,
                         filter: ["has", "point_count"],
                         paint: {
+                            // Size circles based on the sum of crime counts in the cluster
+                            "circle-radius": [
+                                "step",
+                                ["get", "sum"],
+                                15,  // Default radius
+                                10, 20,  // 10+ crimes: radius 20
+                                50, 25,  // 50+ crimes: radius 25
+                                100, 30, // 100+ crimes: radius 30
+                                200, 35, // 200+ crimes: radius 35
+                                500, 40  // 500+ crimes: radius 40
+                            ],
+                            // Color circles based on the sum of crime counts
                             "circle-color": [
                                 "step",
-                                ["get", "point_count"],
-                                "#4287f5", // Light blue
-                                10,
-                                "#2970df", // Medium blue
-                                30,
-                                "#1657c0", // Dark blue
-                            ],
-                            "circle-radius": [
-                                "step",
-                                ["get", "point_count"],
-                                20,
-                                10,
-                                30,
-                                30,
-                                40,
-                            ],
-                        },
-                    });
-                }
-
-                // Add cluster count label
-                if (!map.getLayer("cbu-cluster-count")) {
-                    map.addLayer({
-                        id: "cbu-cluster-count",
-                        type: "symbol",
-                        source: sourceId,
-                        filter: ["has", "point_count"],
-                        layout: {
-                            "text-field": "{point_count_abbreviated}",
-                            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-                            "text-size": 12,
-                            "text-allow-overlap": true
-                        },
-                    });
-                }
-
-                // Add unclustered crime points
-                if (!map.getLayer("cbu-crime-points")) {
-                    map.addLayer({
-                        id: "cbu-crime-points",
-                        type: "circle",
-                        source: sourceId,
-                        filter: ["!", ["has", "point_count"]],
-                        paint: {
-                            "circle-color": "#4287f5",
-                            "circle-radius": [
-                                "interpolate", ["linear"], ["zoom"],
-                                10, ["*", 0.5, ["sqrt", ["get", "number_of_crime"]]],
-                                16, ["*", 1.5, ["sqrt", ["get", "number_of_crime"]]]
+                                ["get", "sum"],
+                                "#4287f5", // Light blue (low)
+                                50, "#2970df", // Medium blue (medium low)
+                                100, "#1657c0", // Dark blue (medium)
+                                200, "#ffa726", // Orange (medium high)
+                                500, "#e53935"  // Red (high)
                             ],
                             "circle-stroke-width": 1,
                             "circle-stroke-color": "#ffffff",
@@ -271,17 +293,80 @@ export default function CBUClusterLayer({
                     });
                 }
 
-                // Add district crime count labels
-                if (!map.getLayer("cbu-crime-count-labels")) {
+                // Add cluster count label showing the sum of crimes
+                if (!map.getLayer("cbu-cluster-count")) {
                     map.addLayer({
-                        id: "cbu-crime-count-labels",
+                        id: "cbu-cluster-count",
+                        type: "symbol",
+                        source: sourceId,
+                        filter: ["has", "point_count"],
+                        layout: {
+                            "text-field": "{sum}",
+                            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+                            "text-size": 12,
+                            "text-allow-overlap": true
+                        },
+                        paint: {
+                            "text-color": "#ffffff"
+                        }
+                    });
+                }
+
+                // Add unclustered point layer
+                if (!map.getLayer("cbu-unclustered-point")) {
+                    map.addLayer({
+                        id: "cbu-unclustered-point",
+                        type: "circle",
+                        source: sourceId,
+                        filter: ["!", ["has", "point_count"]],
+                        minzoom: 7,
+                        paint: {
+                            // Color based on crime level
+                            "circle-color": [
+                                "match",
+                                ["get", "level"],
+                                "high", "#e53935",
+                                "medium", "#ffa726",
+                                "low", "#4fc3f7",
+                                "#4287f5" // default color
+                            ],
+                            // Size based on number_of_crime using a more subtle scale for individual points
+                            "circle-radius": [
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                7, ["*", 0.4, ["sqrt", ["get", "number_of_crime"]]],
+                                10, ["*", 0.6, ["sqrt", ["get", "number_of_crime"]]],
+                                14, ["*", 1.0, ["sqrt", ["get", "number_of_crime"]]]
+                            ],
+                            "circle-stroke-width": 1,
+                            "circle-stroke-color": "#ffffff",
+                            "circle-opacity": 0.8
+                        }
+                    });
+                }
+
+                // Add unclustered point count label
+                if (!map.getLayer("cbu-unclustered-count")) {
+                    map.addLayer({
+                        id: "cbu-unclustered-count",
                         type: "symbol",
                         source: sourceId,
                         filter: ["!", ["has", "point_count"]],
+                        minzoom: 8, // Only show at higher zoom levels
                         layout: {
-                            "text-field": ["to-string", ["get", "number_of_crime"]],
+                            "text-field": [
+                                "to-string",
+                                ["get", "number_of_crime"]
+                            ],
                             "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-                            "text-size": 12,
+                            "text-size": [
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                8, 10,  // smaller text at zoom level 8
+                                12, 12   // larger text at zoom level 12
+                            ],
                             "text-allow-overlap": true
                         },
                         paint: {
@@ -293,7 +378,7 @@ export default function CBUClusterLayer({
                 layersAdded.current = true;
             }
 
-            // Handle click events for CBU points and clusters
+            // Handle click events for CBU points 
             const handleCBUPointClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
                 if (!e.features || e.features.length === 0) return;
 
@@ -323,13 +408,41 @@ export default function CBUClusterLayer({
                 setSelectedIncident(districtIncident);
             };
 
-            // Handle click events on clusters to zoom in
+            // Handle click events on clusters to zoom in or show detailed popup
             const handleClusterClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
                 if (!e.features || e.features.length === 0 || !map) return;
 
                 const feature = e.features[0];
                 const clusterId = feature.properties?.cluster_id;
+                const crimeSum = feature.properties?.sum || 0;
+                const pointCount = feature.properties?.point_count || 0;
+                const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
 
+                // Get current zoom level
+                const currentZoom = map.getZoom();
+
+                // If already at high zoom level, show popup instead of zooming further
+                if (currentZoom >= 12) {
+                    const clusterDescription = `This area contains ${pointCount} districts with a total of ${crimeSum} crime incidents for ${month !== "all" && month !== null ? `month ${month}` : 'all months'
+                        } of ${year}.`;
+
+                    const clusterIncident: ICrimeIncident = {
+                        id: `cluster-${clusterId}`,
+                        district: `${pointCount} Districts`,
+                        category: "Crime Cluster",
+                        description: clusterDescription,
+                        status: "summary",
+                        number_of_crime: crimeSum,
+                        latitude: coordinates[1],
+                        longitude: coordinates[0],
+                        timestamp: new Date()
+                    };
+
+                    setSelectedIncident(clusterIncident);
+                    return;
+                }
+
+                // Otherwise zoom in to expand the cluster
                 try {
                     const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource & { getClusterExpansionZoom: Function };
                     if (source && typeof source.getClusterExpansionZoom === 'function') {
@@ -338,15 +451,16 @@ export default function CBUClusterLayer({
                             (error: Error | null | undefined, zoom: number | null | undefined) => {
                                 if (error || zoom === null || zoom === undefined || !map) return;
 
-                                const coordinates = (feature.geometry as GeoJSON.Point).coordinates.slice() as [number, number];
+                                // Limit zoom level to avoid zooming in too far
+                                const targetZoom = Math.min(zoom, 14);
+
                                 map.easeTo({
                                     center: coordinates,
-                                    zoom: zoom
+                                    zoom: targetZoom
                                 });
                             }
                         );
                     }
-
                 } catch (error) {
                     console.error("Error handling cluster click:", error);
                 }
@@ -355,7 +469,7 @@ export default function CBUClusterLayer({
             // Clean up previous event listeners
             cleanup();
 
-            // Add event listeners
+            // Add event listeners for clusters
             if (map.getLayer('cbu-clusters')) {
                 map.on('click', 'cbu-clusters', handleClusterClick);
                 map.on('mouseenter', 'cbu-clusters', () => {
@@ -366,12 +480,13 @@ export default function CBUClusterLayer({
                 });
             }
 
-            if (map.getLayer('cbu-crime-points')) {
-                map.on('click', 'cbu-crime-points', handleCBUPointClick);
-                map.on('mouseenter', 'cbu-crime-points', () => {
+            // Add event listeners for unclustered points
+            if (map.getLayer('cbu-unclustered-point')) {
+                map.on('click', 'cbu-unclustered-point', handleCBUPointClick);
+                map.on('mouseenter', 'cbu-unclustered-point', () => {
                     if (map.getCanvas()) map.getCanvas().style.cursor = 'pointer';
                 });
-                map.on('mouseleave', 'cbu-crime-points', () => {
+                map.on('mouseleave', 'cbu-unclustered-point', () => {
                     if (map.getCanvas()) map.getCanvas().style.cursor = '';
                 });
             }
@@ -384,7 +499,7 @@ export default function CBUClusterLayer({
         }
 
         return cleanup;
-    }, [map, mapReady, geoJsonData, clusteringEnabled]);
+    }, [map, mapReady, geoJsonData]);
 
     // Update source data when relevant props change
     useEffect(() => {
@@ -400,20 +515,23 @@ export default function CBUClusterLayer({
         }
     }, [map, mapReady, geoJsonData, crimes, filterCategory, year, month]);
 
-    // Update layer visibility when visibility props change
+    // Update layer visibility more explicitly
     useEffect(() => {
         if (!map || !mapReady) return;
 
+        const isActive = visible && showClusters && sourceType === 'cbu';
+        console.log(`CBU Layer: Setting visibility to ${isActive ? 'visible' : 'hidden'} (sourceType=${sourceType})`);
+
         try {
-            manageLayerVisibility(map, layerIds, visible && showClusters && sourceType === 'cbu');
+            manageLayerVisibility(map, layerIds, isActive);
         } catch (error) {
-            // Ignore visibility errors
+            console.error("Error updating CBU layer visibility:", error);
         }
     }, [map, mapReady, visible, showClusters, sourceType]);
 
     return (
         <>
-            {selectedIncident && (
+            {selectedIncident && sourceType === "cbu" && (
                 <IncidentPopup
                     longitude={selectedIncident.longitude || 0}
                     latitude={selectedIncident.latitude || 0}

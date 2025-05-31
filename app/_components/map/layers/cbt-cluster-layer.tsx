@@ -49,13 +49,56 @@ export default function CBTClusterLayer({
   const layersAdded = useRef<boolean>(false);
   const sourceId = "cbt-crimes";
   const layerIds = ['cbt-clusters', 'cbt-cluster-count', 'cbt-unclustered-point'];
+  const [hasAddedSource, setHasAddedSource] = useState<boolean>(false);
+  const prevSourceTypeRef = useRef<string>(sourceType);
 
   // Filter crimes by sourceType
   const cbtCrimes = crimes.filter(crime => crime.source_type === "cbt");
 
+  // Log when source type changes for this component
+  useEffect(() => {
+    // When source type changes, log it
+    if (prevSourceTypeRef.current !== sourceType) {
+      console.log(`CBT Layer: Source type changed from ${prevSourceTypeRef.current} to ${sourceType}`);
+      prevSourceTypeRef.current = sourceType;
+    }
+  }, [sourceType]);
+
+  // Count and log CBT crimes
+  useEffect(() => {
+    // Only log if this is the active source type
+    if (sourceType === "cbt") {
+      const filteredCrimes = cbtCrimes.filter(crime => {
+        const selectedYear = year ? Number(year) : new Date().getFullYear();
+        // Filter by year
+        if (crime.year !== selectedYear) return false;
+
+        // If specific month is selected, filter by month
+        if (month !== "all" && month !== null) {
+          return crime.month === Number(month);
+        }
+        return true;
+      });
+
+      const totalIncidents = filteredCrimes.reduce((sum, crime) => {
+        return sum + (crime.crime_incidents?.length || 0);
+      }, 0);
+
+      console.log(`CBT Layer: Found ${filteredCrimes.length} districts with ${totalIncidents} incidents for year ${year}, month ${month}`);
+    }
+  }, [cbtCrimes, year, month, sourceType]);
+
   // Extract detailed crime incidents for CBT visualization
   const geoJsonData = useCallback(() => {
     try {
+      // If not the active source type, return empty data
+      if (sourceType !== "cbt") {
+        return {
+          type: "FeatureCollection",
+          features: []
+        } as GeoJSON.FeatureCollection;
+      }
+
       const incidents = extractCrimeIncidents(
         cbtCrimes,
         filterCategory
@@ -96,7 +139,7 @@ export default function CBTClusterLayer({
         features: []
       } as GeoJSON.FeatureCollection;
     }
-  }, [cbtCrimes, filterCategory]);
+  }, [cbtCrimes, filterCategory, sourceType]);
 
   // Handle incident popup close
   const handlePopupClose = useCallback(() => {
@@ -330,20 +373,23 @@ export default function CBTClusterLayer({
     }
   }, [map, mapReady, geoJsonData, cbtCrimes, filterCategory, year, month]);
 
-  // Update layer visibility when visibility props change
+  // Update layer visibility more explicitly
   useEffect(() => {
     if (!map || !mapReady) return;
 
+    const isActive = visible && showClusters && sourceType === 'cbt';
+    console.log(`CBT Layer: Setting visibility to ${isActive ? 'visible' : 'hidden'} (sourceType=${sourceType})`);
+
     try {
-      manageLayerVisibility(map, layerIds, visible && showClusters && sourceType === 'cbt');
+      manageLayerVisibility(map, layerIds, isActive);
     } catch (error) {
-      // Ignore visibility errors
+      console.error("Error updating CBT layer visibility:", error);
     }
   }, [map, mapReady, visible, showClusters, sourceType]);
 
   return (
     <>
-      {selectedIncident && (
+      {selectedIncident && sourceType === "cbt" && (
         <IncidentPopup
           longitude={selectedIncident.longitude || 0}
           latitude={selectedIncident.latitude || 0}

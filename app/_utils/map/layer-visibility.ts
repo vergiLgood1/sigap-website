@@ -1,61 +1,49 @@
 import type mapboxgl from "mapbox-gl"
 
 /**
- * Manages visibility for map layers in a consistent way
+ * Manages layer visibility based on provided condition
  * 
- * @param map The mapbox map instance
- * @param layerIds Array of layer IDs to manage
- * @param isVisible Boolean indicating if layers should be visible
- * @param onCleanup Optional callback function to execute during cleanup
- * @returns A cleanup function to remove listeners
+ * @param map - MapboxGL map instance
+ * @param layerIds - Array of layer IDs to manage
+ * @param visible - Whether layers should be visible
  */
 export function manageLayerVisibility(
     map: mapboxgl.Map | null | undefined,
     layerIds: string[],
-    isVisible: boolean,
-    onCleanup?: () => void
-): () => void {
-    if (!map) return () => { }
+    visible: boolean
+) {
+    if (!map) return;
 
-    // Check if map is loaded, if not wait for it
+    const visibilityValue: 'visible' | 'none' = visible ? 'visible' : 'none';
+
+    // Check if style is loaded before attempting to change layer visibility
     if (!map.isStyleLoaded()) {
-        const setupOnLoad = () => {
-            updateLayersVisibility(map, layerIds, isVisible)
-        }
+        // console.warn('Map style not yet loaded while trying to change layer visibility');
 
-        map.once('load', setupOnLoad)
-        return () => {
-            map.off('load', setupOnLoad)
-            if (onCleanup) onCleanup()
-        }
+        // Try again after a short delay
+        setTimeout(() => {
+            if (map && map.isStyleLoaded()) {
+                setLayersVisibility(map, layerIds, visibilityValue);
+            }
+        }, 100);
+        return;
     }
 
-    // Map is loaded, update visibility directly
-    updateLayersVisibility(map, layerIds, isVisible)
-
-    return () => {
-        if (onCleanup) onCleanup()
-    }
+    setLayersVisibility(map, layerIds, visibilityValue);
 }
 
-/**
- * Updates visibility for specified layers
- */
-function updateLayersVisibility(
-    map: mapboxgl.Map,
-    layerIds: string[],
-    isVisible: boolean
-): void {
-    const visibilityValue = isVisible ? 'visible' : 'none';
-
+function setLayersVisibility(map: mapboxgl.Map, layerIds: string[], visibilityValue: 'visible' | 'none') {
     layerIds.forEach(layerId => {
         try {
-            if (map.getStyle() && map.getLayer(layerId)) {
+            // Check if the layer exists first before trying to change its visibility
+            if (map.getLayer(layerId)) {
                 map.setLayoutProperty(layerId, 'visibility', visibilityValue);
+                // console.log(`Set ${layerId} visibility to ${visibilityValue}`);
+            } else {
+                // console.log(`Layer ${layerId} not found on map`);
             }
         } catch (error) {
-        // Silently handle errors for layer visibility changes
-        // These can happen during map style transitions
+            console.warn(`Error setting ${layerId} visibility to ${visibilityValue}:`, error);
         }
-    })
+    });
 }
