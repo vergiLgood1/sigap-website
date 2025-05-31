@@ -274,6 +274,10 @@ export default function CBTClusterLayer({
 
       // Handle click events on unclustered points
       const handleUnclusteredClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+        // Stop event propagation to prevent district layer from being triggered
+        e.originalEvent.stopPropagation();
+        e.preventDefault();
+
         if (!e.features || e.features.length === 0) return;
 
         const feature = e.features[0];
@@ -299,6 +303,10 @@ export default function CBTClusterLayer({
 
       // Handle click events on clusters to zoom in
       const handleClusterClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+        // Stop event propagation to prevent district layer from being triggered
+        e.originalEvent.stopPropagation();
+        e.preventDefault();
+
         if (!e.features || e.features.length === 0 || !map) return;
 
         const feature = e.features[0];

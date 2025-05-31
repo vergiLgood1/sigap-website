@@ -61,7 +61,8 @@ export default function DistrictFillLineLayer({
         if (!map || !visible) return
 
         const handleDistrictClick = (e: any) => {
-            const possibleLayers = [
+            // Check for any clicks on interactive layers first
+            const interactiveLayers = [
                 "unclustered-point",
                 "clusters",
                 "crime-points",
@@ -69,13 +70,24 @@ export default function DistrictFillLineLayer({
                 "incidents-points",
                 "timeline-markers",
                 "recent-incidents",
+                "cbu-clusters",
+                "cbt-clusters",
+                "cbu-unclustered-point",
+                "cbt-unclustered-point"
             ]
-            const availableLayers = possibleLayers.filter(layer => map.getLayer(layer))
-            const incidentFeatures = map.queryRenderedFeatures(e.point, {
-                layers: availableLayers,
+
+            // Check if any interactive layers exist and are under the click
+            const hitInteractiveLayer = interactiveLayers.some(layerId => {
+                // Only check layers that exist
+                if (!map.getLayer(layerId)) return false
+
+                // Query features under the click point for this layer
+                const features = map.queryRenderedFeatures(e.point, { layers: [layerId] })
+                return features && features.length > 0
             })
 
-            if (incidentFeatures && incidentFeatures.length > 0) {
+            // If we hit an interactive element, don't process the district click
+            if (hitInteractiveLayer) {
                 return
             }
 

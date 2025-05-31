@@ -619,7 +619,12 @@ export default function UnitsLayer({ crimes, units = [], filterCategory, visible
             // Add click event for units-points layer
             if (map.getLayer("units-points")) {
                 map.off("click", "units-points", unitClickHandler)
-                map.on("click", "units-points", unitClickHandler)
+                map.on("click", "units-points", (e) => {
+                    // Stop propagation to prevent district layer from handling this click
+                    e.originalEvent.stopPropagation();
+                    e.preventDefault();
+                    unitClickHandler(e);
+                })
                 map.on("mouseenter", "units-points", handleMouseEnter)
                 map.on("mouseleave", "units-points", handleMouseLeave)
                 // console.log("✅ Unit points handler attached")
@@ -630,7 +635,12 @@ export default function UnitsLayer({ crimes, units = [], filterCategory, visible
             // Add click event for incidents-points layer
             if (map.getLayer("incidents-points")) {
                 map.off("click", "incidents-points", incidentClickHandler)
-                map.on("click", "incidents-points", incidentClickHandler)
+                map.on("click", "incidents-points", (e) => {
+                    // Stop propagation to prevent district layer from handling this click
+                    e.originalEvent.stopPropagation();
+                    e.preventDefault();
+                    incidentClickHandler(e);
+                })
                 map.on("mouseenter", "incidents-points", handleMouseEnter)
                 map.on("mouseleave", "incidents-points", handleMouseLeave)
                 // console.log("✅ Incident points handler attached")

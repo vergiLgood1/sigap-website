@@ -265,15 +265,15 @@ export default function CBUClusterLayer({
                         source: sourceId,
                         filter: ["has", "point_count"],
                         paint: {
-                            // Size circles based on the sum of crime counts in the cluster
+                            // Increase circle sizes - make minimum radius larger
                             "circle-radius": [
                                 "step",
                                 ["get", "sum"],
-                                15,  // Default radius
-                                10, 25,  // 10+ crimes: radius 20
-                                100, 30, // 100+ crimes: radius 30
-                                200, 35, // 200+ crimes: radius 35
-                                500, 40  // 500+ crimes: radius 40
+                                22,  // Default radius (increased from 15)
+                                10, 30,  // 10+ crimes: radius 30 (increased from 25)
+                                100, 35, // 100+ crimes: radius 35 (increased from 30)
+                                200, 40, // 200+ crimes: radius 40 (increased from 35)
+                                500, 45  // 500+ crimes: radius 45 (increased from 40)
                             ],
                             // Color circles based on the sum of crime counts
                             "circle-color": [
@@ -285,14 +285,14 @@ export default function CBUClusterLayer({
                                 200, "#f28cb1", // Orange (medium high)
                                 // 500, "#e53935"  // Red (high)
                             ],
-                            // "circle-stroke-width": 1,
-                            // "circle-stroke-color": "#ffffff",
-                            "circle-opacity": 0.8
+                            "circle-stroke-width": 1, // Add stroke for better visibility
+                            "circle-stroke-color": "#ffffff",
+                            "circle-opacity": 0.85
                         }
                     });
                 }
 
-                // Add cluster count label showing the sum of crimes
+                // Add cluster count label showing the sum of crimes with larger text
                 if (!map.getLayer("cbu-cluster-count")) {
                     map.addLayer({
                         id: "cbu-cluster-count",
@@ -302,16 +302,18 @@ export default function CBUClusterLayer({
                         layout: {
                             "text-field": "{sum}",
                             "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-                            "text-size": 12,
+                            "text-size": 14, // Increased from 12
                             "text-allow-overlap": true
                         },
                         paint: {
-                            "text-color": "#ffffff"
+                            "text-color": "#ffffff",
+                            "text-halo-color": "rgba(0,0,0,0.5)", // Add halo for better contrast
+                            "text-halo-width": 1
                         }
                     });
                 }
 
-                // Add unclustered point layer
+                // Add unclustered point layer with larger circles
                 if (!map.getLayer("cbu-unclustered-point")) {
                     map.addLayer({
                         id: "cbu-unclustered-point",
@@ -329,23 +331,23 @@ export default function CBUClusterLayer({
                                 "low", "#51bbd6",
                                 "#4287f5" // default color
                             ],
-                            // Size based on number_of_crime using a more subtle scale for individual points
+                            // Increase size multipliers for better visibility
                             "circle-radius": [
                                 "interpolate",
                                 ["linear"],
                                 ["zoom"],
-                                7, ["*", 0.4, ["sqrt", ["get", "number_of_crime"]]],
-                                10, ["*", 0.6, ["sqrt", ["get", "number_of_crime"]]],
-                                14, ["*", 1.0, ["sqrt", ["get", "number_of_crime"]]]
+                                7, ["*", 0.6, ["sqrt", ["get", "number_of_crime"]]], // Increased from 0.4
+                                10, ["*", 0.8, ["sqrt", ["get", "number_of_crime"]]], // Increased from 0.6
+                                14, ["*", 1.2, ["sqrt", ["get", "number_of_crime"]]] // Increased from 1.0
                             ],
-                            // "circle-stroke-width": 1,
-                            // "circle-stroke-color": "#ffffff",
-                            "circle-opacity": 0.8
+                            "circle-stroke-width": 1,
+                            "circle-stroke-color": "#ffffff",
+                            "circle-opacity": 0.85
                         }
                     });
                 }
 
-                // Add unclustered point count label
+                // Add unclustered point count label with larger text
                 if (!map.getLayer("cbu-unclustered-count")) {
                     map.addLayer({
                         id: "cbu-unclustered-count",
@@ -363,13 +365,15 @@ export default function CBUClusterLayer({
                                 "interpolate",
                                 ["linear"],
                                 ["zoom"],
-                                8, 10,  // smaller text at zoom level 8
-                                12, 12   // larger text at zoom level 12
+                                8, 12,  // Increased from 10
+                                12, 14   // Increased from 12
                             ],
                             "text-allow-overlap": true
                         },
                         paint: {
-                            "text-color": "#ffffff"
+                            "text-color": "#ffffff",
+                            "text-halo-color": "rgba(0,0,0,0.5)", // Add halo for better contrast 
+                            "text-halo-width": 1
                         }
                     });
                 }
@@ -379,6 +383,10 @@ export default function CBUClusterLayer({
 
             // Handle click events for CBU points 
             const handleCBUPointClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+                // Stop event propagation to prevent district layer from being triggered
+                e.originalEvent.stopPropagation();
+                e.preventDefault();
+
                 if (!e.features || e.features.length === 0) return;
 
                 const feature = e.features[0];
@@ -409,6 +417,10 @@ export default function CBUClusterLayer({
 
             // Handle click events on clusters to zoom in or show detailed popup
             const handleClusterClick = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+                // Stop event propagation to prevent district layer from being triggered
+                e.originalEvent.stopPropagation();
+                e.preventDefault();
+
                 if (!e.features || e.features.length === 0 || !map) return;
 
                 const feature = e.features[0];
